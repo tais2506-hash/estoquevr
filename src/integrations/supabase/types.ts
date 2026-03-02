@@ -230,6 +230,7 @@ export type Database = {
           avaliacao_id: string | null
           created_at: string
           date: string
+          deleted_at: string | null
           fornecedor_id: string
           fvm_id: string | null
           id: string
@@ -245,6 +246,7 @@ export type Database = {
           avaliacao_id?: string | null
           created_at?: string
           date: string
+          deleted_at?: string | null
           fornecedor_id: string
           fvm_id?: string | null
           id?: string
@@ -260,6 +262,7 @@ export type Database = {
           avaliacao_id?: string | null
           created_at?: string
           date?: string
+          deleted_at?: string | null
           fornecedor_id?: string
           fvm_id?: string | null
           id?: string
@@ -345,6 +348,7 @@ export type Database = {
           cnpj: string
           contact: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           updated_at: string
@@ -353,6 +357,7 @@ export type Database = {
           cnpj: string
           contact?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           updated_at?: string
@@ -361,6 +366,7 @@ export type Database = {
           cnpj?: string
           contact?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           updated_at?: string
@@ -431,8 +437,15 @@ export type Database = {
         Row: {
           category: string
           code: string
+          controla_consumo: boolean
+          controla_estoque: boolean
+          controla_rastreabilidade: boolean
           created_at: string
+          deleted_at: string | null
+          estoque_minimo: number
+          exige_servico_baixa: boolean
           id: string
+          material_nao_estocavel: boolean
           name: string
           unit: string
           updated_at: string
@@ -440,8 +453,15 @@ export type Database = {
         Insert: {
           category?: string
           code: string
+          controla_consumo?: boolean
+          controla_estoque?: boolean
+          controla_rastreabilidade?: boolean
           created_at?: string
+          deleted_at?: string | null
+          estoque_minimo?: number
+          exige_servico_baixa?: boolean
           id?: string
+          material_nao_estocavel?: boolean
           name: string
           unit: string
           updated_at?: string
@@ -449,8 +469,15 @@ export type Database = {
         Update: {
           category?: string
           code?: string
+          controla_consumo?: boolean
+          controla_estoque?: boolean
+          controla_rastreabilidade?: boolean
           created_at?: string
+          deleted_at?: string | null
+          estoque_minimo?: number
+          exige_servico_baixa?: boolean
           id?: string
+          material_nao_estocavel?: boolean
           name?: string
           unit?: string
           updated_at?: string
@@ -511,10 +538,128 @@ export type Database = {
           },
         ]
       }
+      kit_items: {
+        Row: {
+          created_at: string
+          id: string
+          insumo_id: string
+          kit_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insumo_id: string
+          kit_id: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          kit_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_items_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_items_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kits: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      locations: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          obra_id: string
+          parent_id: string | null
+          status: string
+          type: Database["public"]["Enums"]["location_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+          obra_id: string
+          parent_id?: string | null
+          status?: string
+          type?: Database["public"]["Enums"]["location_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          obra_id?: string
+          parent_id?: string | null
+          status?: string
+          type?: Database["public"]["Enums"]["location_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes: {
         Row: {
           created_at: string
           date: string
+          deleted_at: string | null
           description: string
           id: string
           insumo_id: string
@@ -527,6 +672,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
+          deleted_at?: string | null
           description?: string
           id?: string
           insumo_id: string
@@ -539,6 +685,7 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           insumo_id?: string
@@ -626,40 +773,55 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          deleted_at: string | null
           edit_reason: string | null
           edited_at: string | null
           id: string
           insumo_id: string
+          kit_id: string | null
           local_aplicacao: string
+          location_id: string | null
           obra_id: string
+          quantidade_executada: number | null
           quantity: number
           responsavel: string
+          service_package_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           date: string
+          deleted_at?: string | null
           edit_reason?: string | null
           edited_at?: string | null
           id?: string
           insumo_id: string
+          kit_id?: string | null
           local_aplicacao: string
+          location_id?: string | null
           obra_id: string
+          quantidade_executada?: number | null
           quantity: number
           responsavel: string
+          service_package_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           date?: string
+          deleted_at?: string | null
           edit_reason?: string | null
           edited_at?: string | null
           id?: string
           insumo_id?: string
+          kit_id?: string | null
           local_aplicacao?: string
+          location_id?: string | null
           obra_id?: string
+          quantidade_executada?: number | null
           quantity?: number
           responsavel?: string
+          service_package_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -671,7 +833,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "saidas_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "saidas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_service_package_id_fkey"
+            columns: ["service_package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_packages: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          eap_code: string
+          id: string
+          name: string
+          obra_id: string
+          status: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          eap_code?: string
+          id?: string
+          name: string
+          obra_id: string
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          eap_code?: string
+          id?: string
+          name?: string
+          obra_id?: string
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"
@@ -768,6 +995,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "almoxarifado"
       fvm_status: "pendente" | "aprovada" | "reprovada"
+      location_type: "torre" | "pavimento" | "unidade" | "ambiente"
       movimentacao_type:
         | "entrada"
         | "saida"
@@ -905,6 +1133,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "almoxarifado"],
       fvm_status: ["pendente", "aprovada", "reprovada"],
+      location_type: ["torre", "pavimento", "unidade", "ambiente"],
       movimentacao_type: [
         "entrada",
         "saida",
