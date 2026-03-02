@@ -10,8 +10,10 @@ import { toast } from "sonner";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const [isSignup, setIsSignup] = useState(false);
+  const { login, signup, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -23,13 +25,24 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await login(email, password);
-    setIsLoading(false);
-    if (error) {
-      toast.error("Credenciais inválidas");
+    if (isSignup) {
+      const { error } = await signup(email, password, name);
+      setIsLoading(false);
+      if (error) {
+        toast.error(error);
+      } else {
+        toast.success("Conta criada com sucesso!");
+        navigate("/obras");
+      }
     } else {
-      toast.success("Login realizado com sucesso!");
-      navigate("/obras");
+      const { error } = await login(email, password);
+      setIsLoading(false);
+      if (error) {
+        toast.error("Credenciais inválidas");
+      } else {
+        toast.success("Login realizado com sucesso!");
+        navigate("/obras");
+      }
     }
   };
 
@@ -45,7 +58,22 @@ const Login = () => {
         </div>
 
         <div className="bg-card rounded-xl border border-border p-8 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground mb-4">{isSignup ? "Criar Conta" : "Entrar"}</h2>
           <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignup && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Seu nome"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <div className="relative">
@@ -74,14 +102,25 @@ const Login = () => {
                   onChange={e => setPassword(e.target.value)}
                   className="pl-10"
                   required
+                  minLength={6}
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
-              {isLoading ? "Entrando..." : "Entrar"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Aguarde..." : isSignup ? "Criar Conta" : "Entrar"}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignup(!isSignup)}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
+              {isSignup ? "Já tem conta? Entrar" : "Criar nova conta"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
