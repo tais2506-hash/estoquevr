@@ -775,7 +775,7 @@ export type Database = {
         | "transferencia_saida"
         | "devolucao"
         | "ajuste_inventario"
-      obra_status: "ativa" | "concluida" | "pausada"
+      obra_status: "ativa" | "concluida" | "pausada" | "arquivada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -913,7 +913,7 @@ export const Constants = {
         "devolucao",
         "ajuste_inventario",
       ],
-      obra_status: ["ativa", "concluida", "pausada"],
+      obra_status: ["ativa", "concluida", "pausada", "arquivada"],
     },
   },
 } as const
