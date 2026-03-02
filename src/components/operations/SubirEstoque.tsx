@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import FVMForm from "@/components/operations/FVMForm";
 import AvaliacaoForm from "@/components/operations/AvaliacaoForm";
+import ImportarPlanilha from "@/components/operations/ImportarPlanilha";
 
-type Step = "choose" | "manual" | "fvm" | "avaliacao" | "done";
+type Step = "choose" | "manual" | "importar" | "fvm" | "avaliacao" | "done";
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, fornecedores, selectedObraId, addEntrada, addFVM, addAvaliacao } = useInventory();
@@ -113,6 +114,10 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
+  if (step === "importar") {
+    return <ImportarPlanilha onBack={() => setStep("choose")} />;
+  }
+
   if (step === "choose") {
     return (
       <div className="animate-fade-in">
@@ -126,10 +131,10 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
             <span className="font-semibold text-foreground">Entrada Manual</span>
             <span className="text-xs text-muted-foreground">Cadastrar item a item</span>
           </button>
-          <button className="operation-btn opacity-60 cursor-not-allowed" title="Em breve">
+          <button onClick={() => setStep("importar")} className="operation-btn">
             <FileSpreadsheet className="w-10 h-10 text-info" strokeWidth={1.5} />
             <span className="font-semibold text-foreground">Importar Planilha</span>
-            <span className="text-xs text-muted-foreground">Excel ou CSV (em breve)</span>
+            <span className="text-xs text-muted-foreground">Excel (.xlsx) - GRD Realizado</span>
           </button>
         </div>
       </div>
