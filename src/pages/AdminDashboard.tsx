@@ -4,11 +4,18 @@ import { useNavigate } from "react-router-dom";
 import { Building2, LogOut, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
 import FornecedoresCRUD from "@/components/admin/FornecedoresCRUD";
+import KitsCRUD from "@/components/admin/KitsCRUD";
+import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
+import LocationsCRUD from "@/components/admin/LocationsCRUD";
+import FVMControl from "@/components/admin/FVMControl";
+import AvaliacaoControl from "@/components/admin/AvaliacaoControl";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
+import ReportsPage from "@/components/reports/ReportsPage";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
@@ -54,7 +61,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/obras")}>
               <ArrowLeft className="w-4 h-4" />
@@ -63,8 +70,8 @@ const AdminDashboard = () => {
               <Building2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-foreground">Dashboard Administrativo</h1>
-              <p className="text-xs text-muted-foreground">Visão consolidada</p>
+              <h1 className="text-lg font-bold text-foreground">Painel Administrativo</h1>
+              <p className="text-xs text-muted-foreground">Valor Real — Gestão Completa</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -84,35 +91,36 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 animate-fade-in">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8 animate-fade-in">
         <Tabs defaultValue="geral" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="geral">Visão Geral</TabsTrigger>
-            <TabsTrigger value="por-obra">Por Obra</TabsTrigger>
-            <TabsTrigger value="obras">Obras</TabsTrigger>
-            <TabsTrigger value="insumos">Insumos</TabsTrigger>
-            <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full">
+            <TabsList className="inline-flex w-auto">
+              <TabsTrigger value="geral">Visão Geral</TabsTrigger>
+              <TabsTrigger value="por-obra">Por Obra</TabsTrigger>
+              <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+              <TabsTrigger value="obras">Obras</TabsTrigger>
+              <TabsTrigger value="insumos">Insumos</TabsTrigger>
+              <TabsTrigger value="kits">Kits</TabsTrigger>
+              <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
+              <TabsTrigger value="eap">EAP</TabsTrigger>
+              <TabsTrigger value="locais">Locais</TabsTrigger>
+              <TabsTrigger value="fvm">FVM</TabsTrigger>
+              <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
 
-          <TabsContent value="geral">
-            <DashboardGeral />
-          </TabsContent>
-
-          <TabsContent value="por-obra">
-            <DashboardObra />
-          </TabsContent>
-
-          <TabsContent value="obras">
-            <ObrasCRUD />
-          </TabsContent>
-
-          <TabsContent value="insumos">
-            <InsumosCRUD />
-          </TabsContent>
-
-          <TabsContent value="fornecedores">
-            <FornecedoresCRUD />
-          </TabsContent>
+          <TabsContent value="geral"><DashboardGeral /></TabsContent>
+          <TabsContent value="por-obra"><DashboardObra /></TabsContent>
+          <TabsContent value="relatorios"><ReportsPage /></TabsContent>
+          <TabsContent value="obras"><ObrasCRUD /></TabsContent>
+          <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
+          <TabsContent value="kits"><KitsCRUD /></TabsContent>
+          <TabsContent value="fornecedores"><FornecedoresCRUD /></TabsContent>
+          <TabsContent value="eap"><ServicePackagesCRUD /></TabsContent>
+          <TabsContent value="locais"><LocationsCRUD /></TabsContent>
+          <TabsContent value="fvm"><FVMControl /></TabsContent>
+          <TabsContent value="avaliacoes"><AvaliacaoControl /></TabsContent>
         </Tabs>
       </main>
     </div>

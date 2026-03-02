@@ -4,19 +4,25 @@ import { useInventory } from "@/contexts/InventoryContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 const InsumosCRUD = () => {
-  const { insumos } = useInventory();
+  const { insumos, estoque } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", code: "", unit: "", category: "" });
+  const [form, setForm] = useState({
+    name: "", code: "", unit: "", category: "",
+    controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false,
+    material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0,
+  });
 
   const filtered = insumos.filter(i =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -24,11 +30,22 @@ const InsumosCRUD = () => {
     i.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const resetForm = () => { setForm({ name: "", code: "", unit: "", category: "" }); setEditing(null); };
+  const resetForm = () => {
+    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0 });
+    setEditing(null);
+  };
 
   const openEdit = (insumo: any) => {
     setEditing(insumo);
-    setForm({ name: insumo.name, code: insumo.code, unit: insumo.unit, category: insumo.category || "" });
+    setForm({
+      name: insumo.name, code: insumo.code, unit: insumo.unit, category: insumo.category || "",
+      controla_estoque: insumo.controla_estoque ?? true,
+      controla_consumo: insumo.controla_consumo ?? true,
+      controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
+      material_nao_estocavel: insumo.material_nao_estocavel ?? false,
+      exige_servico_baixa: insumo.exige_servico_baixa ?? false,
+      estoque_minimo: insumo.estoque_minimo ?? 0,
+    });
     setDialogOpen(true);
   };
 
@@ -38,16 +55,21 @@ const InsumosCRUD = () => {
       return;
     }
     try {
+      const payload = {
+        name: form.name, code: form.code, unit: form.unit, category: form.category,
+        controla_estoque: form.controla_estoque,
+        controla_consumo: form.controla_consumo,
+        controla_rastreabilidade: form.controla_rastreabilidade,
+        material_nao_estocavel: form.material_nao_estocavel,
+        exige_servico_baixa: form.exige_servico_baixa,
+        estoque_minimo: form.estoque_minimo,
+      };
       if (editing) {
-        const { error } = await supabase.from("insumos").update({
-          name: form.name, code: form.code, unit: form.unit, category: form.category,
-        }).eq("id", editing.id);
+        const { error } = await supabase.from("insumos").update(payload as any).eq("id", editing.id);
         if (error) throw error;
         toast.success("Insumo atualizado");
       } else {
-        const { error } = await supabase.from("insumos").insert({
-          name: form.name, code: form.code, unit: form.unit, category: form.category,
-        });
+        const { error } = await supabase.from("insumos").insert(payload as any);
         if (error) throw error;
         toast.success("Insumo cadastrado");
       }
@@ -61,13 +83,21 @@ const InsumosCRUD = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from("insumos").delete().eq("id", id);
+      const { error } = await supabase.from("insumos").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
       if (error) throw error;
-      toast.success("Insumo excluído");
+      toast.success("Insumo desativado");
       queryClient.invalidateQueries({ queryKey: ["insumos"] });
     } catch (err: any) {
-      toast.error(err.message?.includes("violates") ? "Não é possível excluir: insumo em uso" : err.message);
+      toast.error(err.message || "Erro ao excluir");
     }
+  };
+
+  // Check for low stock alerts
+  const getStockAlert = (insumoId: string) => {
+    const ins = insumos.find(i => i.id === insumoId);
+    if (!ins || !ins.estoque_minimo || ins.estoque_minimo <= 0) return false;
+    const totalStock = estoque.filter(e => e.insumo_id === insumoId).reduce((a, e) => a + e.quantity, 0);
+    return totalStock <= ins.estoque_minimo;
   };
 
   return (
@@ -81,7 +111,7 @@ const InsumosCRUD = () => {
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Insumo</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? "Editar Insumo" : "Novo Insumo"}</DialogTitle>
             </DialogHeader>
@@ -100,10 +130,41 @@ const InsumosCRUD = () => {
                   <Input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="Ex: kg, un, m" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Ex: Elétrico, Hidráulico" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Ex: Elétrico" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Estoque Mínimo</Label>
+                  <Input type="number" min="0" step="any" value={form.estoque_minimo} onChange={e => setForm({ ...form, estoque_minimo: parseFloat(e.target.value) || 0 })} />
+                </div>
               </div>
+
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">Controles</p>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Controla estoque?</Label>
+                  <Switch checked={form.controla_estoque} onCheckedChange={v => setForm({ ...form, controla_estoque: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Controla consumo?</Label>
+                  <Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Controla rastreabilidade?</Label>
+                  <Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Material não estocável?</Label>
+                  <Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Exige vínculo com serviço?</Label>
+                  <Switch checked={form.exige_servico_baixa} onCheckedChange={v => setForm({ ...form, exige_servico_baixa: v })} />
+                </div>
+              </div>
+
               <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
             </div>
           </DialogContent>
@@ -118,40 +179,57 @@ const InsumosCRUD = () => {
               <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Código</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Categoria</th>
+              <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Flags</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map(i => (
-              <tr key={i.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3 font-medium text-foreground">{i.name}</td>
-                <td className="p-3 text-muted-foreground hidden sm:table-cell font-mono text-xs">{i.code}</td>
-                <td className="p-3 text-muted-foreground">{i.unit}</td>
-                <td className="p-3 text-muted-foreground hidden md:table-cell">{i.category || "—"}</td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(i)}><Pencil className="w-4 h-4" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir insumo?</AlertDialogTitle>
-                          <AlertDialogDescription>Só é possível excluir insumos que não possuem movimentações vinculadas.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(i.id)}>Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map(i => {
+              const lowStock = getStockAlert(i.id);
+              return (
+                <tr key={i.id} className={`border-b border-border/50 last:border-0 ${lowStock ? "bg-destructive/5" : ""}`}>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{i.name}</span>
+                      {lowStock && <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+                    </div>
+                  </td>
+                  <td className="p-3 text-muted-foreground hidden sm:table-cell font-mono text-xs">{i.code}</td>
+                  <td className="p-3 text-muted-foreground">{i.unit}</td>
+                  <td className="p-3 text-muted-foreground hidden md:table-cell">{i.category || "—"}</td>
+                  <td className="p-3 hidden lg:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {(i as any).material_nao_estocavel && <Badge variant="outline" className="text-xs">N.Est</Badge>}
+                      {(i as any).controla_rastreabilidade && <Badge variant="outline" className="text-xs">Rast</Badge>}
+                      {(i as any).exige_servico_baixa && <Badge variant="outline" className="text-xs">Svc</Badge>}
+                      {(i as any).estoque_minimo > 0 && <Badge variant="outline" className="text-xs">Min:{(i as any).estoque_minimo}</Badge>}
+                    </div>
+                  </td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(i)}><Pencil className="w-4 h-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desativar insumo?</AlertDialogTitle>
+                            <AlertDialogDescription>O insumo será desativado e não aparecerá mais em novas operações. O histórico será mantido.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(i.id)}>Desativar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum insumo encontrado</td></tr>
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum insumo encontrado</td></tr>
             )}
           </tbody>
         </table>
