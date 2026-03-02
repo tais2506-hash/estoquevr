@@ -1,28 +1,33 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 const ObrasCRUD = () => {
-  const { obras } = useInventory();
+  const { obras, movimentacoes } = useInventory();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", code: "", address: "", status: "ativa" });
+  const [showArchived, setShowArchived] = useState(false);
 
-  const filtered = obras.filter(o =>
-    o.name.toLowerCase().includes(search.toLowerCase()) ||
-    o.address?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = obras.filter(o => {
+    const matchSearch = o.name.toLowerCase().includes(search.toLowerCase()) ||
+      o.address?.toLowerCase().includes(search.toLowerCase());
+    if (showArchived) return matchSearch;
+    return matchSearch && o.status !== "arquivada";
+  });
 
   const resetForm = () => {
     setForm({ name: "", code: "", address: "", status: "ativa" });
@@ -62,6 +67,37 @@ const ObrasCRUD = () => {
     }
   };
 
+  const obraHasMovements = (obraId: string) =>
+    movimentacoes.some(m => m.obra_id === obraId);
+
+  const handleArchive = async (obra: any) => {
+    try {
+      const { error } = await supabase.from("obras").update({
+        status: "arquivada" as any,
+      }).eq("id", obra.id);
+      if (error) throw error;
+
+      // Log audit
+      if (user?.id) {
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          user_name: user.name || "",
+          user_role: user.role || "",
+          action: "obra_arquivada",
+          table_name: "obras",
+          record_id: obra.id,
+          old_value: { status: obra.status },
+          new_value: { status: "arquivada" },
+        });
+      }
+
+      toast.success("Obra arquivada com sucesso");
+      queryClient.invalidateQueries({ queryKey: ["obras"] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao arquivar");
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase.from("obras").delete().eq("id", id);
@@ -73,52 +109,64 @@ const ObrasCRUD = () => {
     }
   };
 
-  const statusLabel: Record<string, string> = { ativa: "Ativa", concluida: "Concluída", pausada: "Pausada" };
-  const statusColor: Record<string, string> = { ativa: "bg-success/10 text-success", concluida: "bg-muted text-muted-foreground", pausada: "bg-warning/10 text-warning" };
+  const statusLabel: Record<string, string> = { ativa: "Ativa", concluida: "Concluída", pausada: "Pausada", arquivada: "Arquivada" };
+  const statusColor: Record<string, string> = {
+    ativa: "bg-success/10 text-success",
+    concluida: "bg-muted text-muted-foreground",
+    pausada: "bg-warning/10 text-warning",
+    arquivada: "bg-destructive/10 text-destructive",
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Buscar obras..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Nova Obra</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Obra" : "Nova Obra"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome da obra" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowArchived(!showArchived)}>
+            <Archive className="w-4 h-4 mr-1" />
+            {showArchived ? "Ocultar Arquivadas" : "Mostrar Arquivadas"}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-2" />Nova Obra</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar Obra" : "Nova Obra"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome da obra" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Código</Label>
+                  <Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Código interno" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço</Label>
+                  <Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Endereço" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativa">Ativa</SelectItem>
+                      <SelectItem value="concluida">Concluída</SelectItem>
+                      <SelectItem value="pausada">Pausada</SelectItem>
+                      <SelectItem value="arquivada">Arquivada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
-              <div className="space-y-2">
-                <Label>Código</Label>
-                <Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Código interno" />
-              </div>
-              <div className="space-y-2">
-                <Label>Endereço</Label>
-                <Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Endereço" />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativa">Ativa</SelectItem>
-                    <SelectItem value="concluida">Concluída</SelectItem>
-                    <SelectItem value="pausada">Pausada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -132,35 +180,74 @@ const ObrasCRUD = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(o => (
-              <tr key={o.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3 font-medium text-foreground">{o.name}</td>
-                <td className="p-3 text-muted-foreground hidden sm:table-cell">{o.address}</td>
-                <td className="p-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[o.status] || ""}`}>{statusLabel[o.status] || o.status}</span>
-                </td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(o)}><Pencil className="w-4 h-4" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir obra?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação não pode ser desfeita. Só é possível excluir obras sem movimentações vinculadas.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(o.id)}>Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map(o => {
+              const hasMovs = obraHasMovements(o.id);
+              return (
+                <tr key={o.id} className="border-b border-border/50 last:border-0">
+                  <td className="p-3 font-medium text-foreground">{o.name}</td>
+                  <td className="p-3 text-muted-foreground hidden sm:table-cell">{o.address}</td>
+                  <td className="p-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[o.status] || ""}`}>
+                      {statusLabel[o.status] || o.status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(o)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+
+                      {/* Archive button for obras with movements */}
+                      {hasMovs && o.status !== "arquivada" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-warning">
+                              <Archive className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Arquivar obra?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta obra possui movimentações registradas. O arquivamento manterá o histórico,
+                                mas removerá a obra da operação ativa. Os dados continuarão disponíveis para relatórios históricos.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleArchive(o)}>Arquivar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+
+                      {/* Delete button - only for obras without movements */}
+                      {!hasMovs && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir obra?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. A obra será removida permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(o.id)}>Excluir</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhuma obra encontrada</td></tr>
             )}

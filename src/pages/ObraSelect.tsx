@@ -8,12 +8,14 @@ const statusColors: Record<string, string> = {
   ativa: "bg-success/10 text-success border-success/20",
   concluida: "bg-muted text-muted-foreground border-border",
   pausada: "bg-warning/10 text-warning border-warning/20",
+  arquivada: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const statusLabels: Record<string, string> = {
   ativa: "Ativa",
   concluida: "Concluída",
   pausada: "Pausada",
+  arquivada: "Arquivada",
 };
 
 const ObraSelect = () => {
@@ -80,7 +82,7 @@ const ObraSelect = () => {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {obras.map((obra, idx) => {
+            {obras.filter(o => o.status !== "arquivada").map((obra, idx) => {
               const estoqueObra = getEstoqueByObra(obra.id);
               const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
               const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
