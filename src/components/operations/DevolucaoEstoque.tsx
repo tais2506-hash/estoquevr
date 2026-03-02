@@ -9,25 +9,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 const DevolucaoEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { entradas, insumos, fornecedores, selectedObraId, addDevolucao, getEstoqueByObra } = useInventory();
+  const { entradas, insumos, fornecedores, selectedObraId, addDevolucao } = useInventory();
   const [done, setDone] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ entradaId: "", quantity: "", motivo: "", date: new Date().toISOString().split("T")[0] });
 
-  const entradasObra = entradas.filter(e => e.obraId === selectedObraId);
+  const entradasObra = entradas.filter(e => e.obra_id === selectedObraId);
   const selectedEntrada = entradasObra.find(e => e.id === formData.entradaId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedObraId || !selectedEntrada) return;
+    if (!selectedObraId || !selectedEntrada || isSubmitting) return;
     const qty = parseFloat(formData.quantity);
     if (!qty || !formData.motivo) { toast.error("Preencha todos os campos"); return; }
 
-    addDevolucao({
-      obraId: selectedObraId, entradaId: selectedEntrada.id, insumoId: selectedEntrada.insumoId,
-      fornecedorId: selectedEntrada.fornecedorId, quantity: qty, motivo: formData.motivo, date: formData.date,
-    });
-    toast.success("Devolução registrada!");
-    setDone(true);
+    setIsSubmitting(true);
+    try {
+      await addDevolucao({
+        obraId: selectedObraId, entradaId: selectedEntrada.id, insumoId: selectedEntrada.insumo_id,
+        fornecedorId: selectedEntrada.fornecedor_id, quantity: qty, motivo: formData.motivo, date: formData.date,
+      });
+      toast.success("Devolução registrada!");
+      setDone(true);
+    } catch (err) {
+      toast.error("Erro ao registrar devolução");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (done) {
@@ -58,11 +66,11 @@ const DevolucaoEstoque = ({ onBack }: { onBack: () => void }) => {
             <SelectTrigger><SelectValue placeholder="Selecione a entrada" /></SelectTrigger>
             <SelectContent>
               {entradasObra.map(e => {
-                const insumo = insumos.find(i => i.id === e.insumoId);
-                const forn = fornecedores.find(f => f.id === e.fornecedorId);
+                const insumo = insumos.find(i => i.id === e.insumo_id);
+                const forn = fornecedores.find(f => f.id === e.fornecedor_id);
                 return (
                   <SelectItem key={e.id} value={e.id}>
-                    {insumo?.name} — NF: {e.notaFiscal} — {forn?.name}
+                    {insumo?.name} — NF: {e.nota_fiscal} — {forn?.name}
                   </SelectItem>
                 );
               })}
@@ -86,7 +94,9 @@ const DevolucaoEstoque = ({ onBack }: { onBack: () => void }) => {
           <Textarea value={formData.motivo} onChange={e => setFormData(p => ({ ...p, motivo: e.target.value }))} placeholder="Descreva o motivo..." rows={3} />
         </div>
 
-        <Button type="submit" className="w-full">Registrar Devolução</Button>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Registrando..." : "Registrar Devolução"}
+        </Button>
       </form>
     </div>
   );

@@ -10,16 +10,26 @@ import { toast } from "sonner";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  if (isAuthenticated) {
+    navigate("/obras", { replace: true });
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    setIsLoading(true);
+    const { error } = await login(email, password);
+    setIsLoading(false);
+    if (error) {
+      toast.error("Credenciais inválidas");
+    } else {
       toast.success("Login realizado com sucesso!");
       navigate("/obras");
-    } else {
-      toast.error("Credenciais inválidas");
     }
   };
 
@@ -68,26 +78,10 @@ const Login = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              Entrar
+            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
+              {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center mb-3">Credenciais de demonstração:</p>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-muted rounded-lg p-3">
-                <p className="font-medium text-foreground">Almoxarifado</p>
-                <p className="text-muted-foreground mt-1">almox@valorreal.com</p>
-                <p className="text-muted-foreground">123456</p>
-              </div>
-              <div className="bg-muted rounded-lg p-3">
-                <p className="font-medium text-foreground">Administrador</p>
-                <p className="text-muted-foreground mt-1">admin@valorreal.com</p>
-                <p className="text-muted-foreground">123456</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

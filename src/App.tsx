@@ -14,9 +14,16 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
   if (!isAuthenticated) return <Navigate to="/" replace />;
-  if (adminOnly && user?.role !== "admin") return <Navigate to="/obras" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/obras" replace />;
   return <>{children}</>;
 };
 

@@ -14,6 +14,7 @@ type Step = "choose" | "manual" | "fvm" | "avaliacao" | "done";
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, fornecedores, selectedObraId, addEntrada, addFVM, addAvaliacao } = useInventory();
   const [step, setStep] = useState<Step>("choose");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", notaFiscal: "", fornecedorId: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0],
   });
@@ -30,32 +31,43 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     setStep("fvm");
   };
 
-  const handleFVMComplete = (data: { quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: "aprovada" | "reprovada" }) => {
+  const handleFVMComplete = async (data: { quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: "aprovada" | "reprovada" }) => {
     if (!selectedObraId) return;
-    const id = addFVM({
-      obraId: selectedObraId, notaFiscal: formData.notaFiscal, fornecedorId: formData.fornecedorId,
-      date: formData.date, ...data,
-    });
-    setFvmId(id);
-    setStep("avaliacao");
+    try {
+      const id = await addFVM({
+        obraId: selectedObraId, notaFiscal: formData.notaFiscal, fornecedorId: formData.fornecedorId,
+        date: formData.date, ...data,
+      });
+      setFvmId(id);
+      setStep("avaliacao");
+    } catch (err) {
+      toast.error("Erro ao salvar FVM");
+    }
   };
 
-  const handleAvaliacaoComplete = (data: { pontualidade: number; qualidade: number; atendimento: number; documentacao: number; observacoes: string }) => {
-    if (!selectedObraId) return;
-    const avId = addAvaliacao({
-      obraId: selectedObraId, fornecedorId: formData.fornecedorId, notaFiscal: formData.notaFiscal,
-      date: formData.date, ...data,
-    });
+  const handleAvaliacaoComplete = async (data: { pontualidade: number; qualidade: number; atendimento: number; documentacao: number; observacoes: string }) => {
+    if (!selectedObraId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const avId = await addAvaliacao({
+        obraId: selectedObraId, fornecedorId: formData.fornecedorId, notaFiscal: formData.notaFiscal,
+        date: formData.date, ...data,
+      });
 
-    addEntrada({
-      obraId: selectedObraId, insumoId: formData.insumoId, notaFiscal: formData.notaFiscal,
-      fornecedorId: formData.fornecedorId, quantity: parseFloat(formData.quantity),
-      unitValue: parseFloat(formData.unitValue), totalValue, date: formData.date,
-      fvmId, avaliacaoId: avId,
-    });
+      await addEntrada({
+        obraId: selectedObraId, insumoId: formData.insumoId, notaFiscal: formData.notaFiscal,
+        fornecedorId: formData.fornecedorId, quantity: parseFloat(formData.quantity),
+        unitValue: parseFloat(formData.unitValue), totalValue, date: formData.date,
+        fvmId, avaliacaoId: avId,
+      });
 
-    toast.success("Entrada registrada com sucesso!");
-    setStep("done");
+      toast.success("Entrada registrada com sucesso!");
+      setStep("done");
+    } catch (err) {
+      toast.error("Erro ao registrar entrada");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (step === "done") {
@@ -96,7 +108,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <p className="text-sm text-muted-foreground mb-4">
           {fornecedores.find(f => f.id === formData.fornecedorId)?.name} — NF: {formData.notaFiscal}
         </p>
-        <AvaliacaoForm onSubmit={handleAvaliacaoComplete} />
+        <AvaliacaoForm onSubmit={handleAvaliacaoComplete} isLoading={isSubmitting} />
       </div>
     );
   }

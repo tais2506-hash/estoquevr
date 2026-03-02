@@ -8,27 +8,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { insumos, selectedObraId, addSaida, getEstoqueByObra } = useInventory();
+  const { selectedObraId, addSaida, getEstoqueByObra } = useInventory();
   const [done, setDone] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
-  const selectedItem = estoqueObra.find(e => e.insumoId === formData.insumoId);
+  const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
   const maxQty = selectedItem?.quantity || 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedObraId) return;
+    if (!selectedObraId || isSubmitting) return;
     const qty = parseFloat(formData.quantity);
     if (qty > maxQty) { toast.error(`Estoque insuficiente. Disponível: ${maxQty}`); return; }
     if (!formData.insumoId || !qty || !formData.localAplicacao || !formData.responsavel) { toast.error("Preencha todos os campos"); return; }
 
-    addSaida({ obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty, date: formData.date, localAplicacao: formData.localAplicacao, responsavel: formData.responsavel });
-    toast.success("Saída registrada!");
-    setDone(true);
+    setIsSubmitting(true);
+    try {
+      await addSaida({ obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty, date: formData.date, localAplicacao: formData.localAplicacao, responsavel: formData.responsavel });
+      toast.success("Saída registrada!");
+      setDone(true);
+    } catch (err) {
+      toast.error("Erro ao registrar saída");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (done) {
@@ -60,7 +68,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
             <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
             <SelectContent>
               {estoqueObra.map(e => (
-                <SelectItem key={e.insumoId} value={e.insumoId}>
+                <SelectItem key={e.insumo_id} value={e.insumo_id}>
                   {e.insumo.name} — Disp: {e.quantity} {e.insumo.unit}
                 </SelectItem>
               ))}
@@ -96,7 +104,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
 
-        <Button type="submit" className="w-full">Registrar Saída</Button>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Registrando..." : "Registrar Saída"}
+        </Button>
       </form>
     </div>
   );

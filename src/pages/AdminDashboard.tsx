@@ -1,56 +1,63 @@
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Building2, LogOut, ArrowLeft, Package, TrendingUp, Activity, Star, Download } from "lucide-react";
+import { Building2, LogOut, ArrowLeft, Package, TrendingUp, Activity, Star, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-
-const COLORS = ["hsl(205,65%,45%)", "hsl(38,92%,50%)", "hsl(152,60%,40%)", "hsl(340,65%,55%)", "hsl(270,50%,55%)"];
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const AdminDashboard = () => {
-  const { obras, estoque, insumos, movimentacoes, fornecedores, entradas, avaliacoes, getEstoqueByObra } = useInventory();
+  const { obras, estoque, insumos, movimentacoes, fornecedores, entradas, avaliacoes, getEstoqueByObra, loading } = useInventory();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const totalGeral = estoque.reduce((acc, e) => acc + e.totalValue, 0);
-  const totalInsumos = new Set(estoque.map(e => e.insumoId)).size;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const totalGeral = estoque.reduce((acc, e) => acc + e.total_value, 0);
+  const totalInsumos = new Set(estoque.map(e => e.insumo_id)).size;
   const totalMovs = movimentacoes.length;
 
   const estoqueByObra = obras.map(o => {
     const items = getEstoqueByObra(o.id);
     return {
       name: o.name.length > 15 ? o.name.substring(0, 15) + "…" : o.name,
-      valor: items.reduce((a, e) => a + e.totalValue, 0),
+      valor: items.reduce((a, e) => a + e.total_value, 0),
     };
   });
 
   const fornecedorRanking = fornecedores.map(f => {
-    const avs = avaliacoes.filter(a => a.fornecedorId === f.id);
+    const avs = avaliacoes.filter(a => a.fornecedor_id === f.id);
     const avg = avs.length > 0
       ? avs.reduce((a, av) => a + (av.pontualidade + av.qualidade + av.atendimento + av.documentacao) / 4, 0) / avs.length
       : 0;
-    return { name: f.name, media: Math.round(avg * 10) / 10, entregas: entradas.filter(e => e.fornecedorId === f.id).length };
+    return { name: f.name, media: Math.round(avg * 10) / 10, entregas: entradas.filter(e => e.fornecedor_id === f.id).length };
   }).sort((a, b) => b.media - a.media);
 
   const handleExport = (type: string) => {
     const data = type === "estoque"
       ? estoque.map(e => ({
-          obra: obras.find(o => o.id === e.obraId)?.name,
-          insumo: insumos.find(i => i.id === e.insumoId)?.name,
+          obra: obras.find(o => o.id === e.obra_id)?.name,
+          insumo: insumos.find(i => i.id === e.insumo_id)?.name,
           quantidade: e.quantity,
-          valorUnitario: e.averageUnitCost,
-          valorTotal: e.totalValue,
+          valorUnitario: e.average_unit_cost,
+          valorTotal: e.total_value,
         }))
       : movimentacoes.map(m => ({
-          obra: obras.find(o => o.id === m.obraId)?.name,
-          insumo: insumos.find(i => i.id === m.insumoId)?.name,
+          obra: obras.find(o => o.id === m.obra_id)?.name,
+          insumo: insumos.find(i => i.id === m.insumo_id)?.name,
           tipo: m.type,
           quantidade: m.quantity,
           data: m.date,
           descricao: m.description,
         }));
 
-    const csv = [Object.keys(data[0] || {}).join(","), ...data.map(r => Object.values(r).join(","))].join("\n");
+    if (data.length === 0) return;
+    const csv = [Object.keys(data[0]).join(","), ...data.map(r => Object.values(r).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -77,7 +84,7 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground hidden sm:inline">{user?.name}</span>
-            <Button variant="ghost" size="icon" onClick={() => { logout(); navigate("/"); }}>
+            <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -85,7 +92,6 @@ const AdminDashboard = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8 animate-fade-in">
-        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="stat-card">
             <div className="flex items-center gap-2 mb-2">
@@ -117,7 +123,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Charts */}
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="bg-card rounded-xl border border-border p-5">
             <h3 className="font-semibold text-foreground mb-4">Valor em Estoque por Obra</h3>
@@ -137,6 +142,7 @@ const AdminDashboard = () => {
           <div className="bg-card rounded-xl border border-border p-5">
             <h3 className="font-semibold text-foreground mb-4">Ranking de Fornecedores</h3>
             <div className="space-y-3">
+              {fornecedorRanking.length === 0 && <p className="text-muted-foreground text-sm">Nenhum fornecedor cadastrado.</p>}
               {fornecedorRanking.map((f, idx) => (
                 <div key={f.name} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
@@ -156,7 +162,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Export */}
         <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="font-semibold text-foreground mb-4">Exportar Dados</h3>
           <div className="flex flex-wrap gap-3">
@@ -169,7 +174,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent movements */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="p-5 border-b border-border">
             <h3 className="font-semibold text-foreground">Últimas Movimentações</h3>
@@ -186,11 +190,11 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {movimentacoes.slice(-10).reverse().map(m => (
+                {movimentacoes.slice(0, 10).map(m => (
                   <tr key={m.id} className="border-b border-border/50 last:border-0">
                     <td className="p-3 text-muted-foreground">{m.date}</td>
-                    <td className="p-3 text-foreground">{obras.find(o => o.id === m.obraId)?.name}</td>
-                    <td className="p-3 text-foreground">{insumos.find(i => i.id === m.insumoId)?.name}</td>
+                    <td className="p-3 text-foreground">{obras.find(o => o.id === m.obra_id)?.name}</td>
+                    <td className="p-3 text-foreground">{insumos.find(i => i.id === m.insumo_id)?.name}</td>
                     <td className="p-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${m.type === "entrada" ? "bg-success/10 text-success" : m.type === "saida" ? "bg-destructive/10 text-destructive" : "bg-info/10 text-info"}`}>
                         {m.type.replace("_", " ")}
@@ -199,6 +203,9 @@ const AdminDashboard = () => {
                     <td className="p-3 text-right font-mono text-foreground">{m.quantity}</td>
                   </tr>
                 ))}
+                {movimentacoes.length === 0 && (
+                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                )}
               </tbody>
             </table>
           </div>

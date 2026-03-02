@@ -33,7 +33,7 @@ const ObraDashboard = () => {
   }
 
   const estoqueObra = getEstoqueByObra(selectedObraId);
-  const totalValue = estoqueObra.reduce((acc, e) => acc + e.totalValue, 0);
+  const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
   const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
 
   const renderOperation = () => {
@@ -74,7 +74,7 @@ const ObraDashboard = () => {
                 <p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => { logout(); navigate("/"); }}>
+            <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -84,7 +84,6 @@ const ObraDashboard = () => {
       <main className="max-w-5xl mx-auto px-6 py-8">
         {view === "menu" ? (
           <div className="animate-fade-in">
-            {/* Stats cards on mobile */}
             <div className="grid grid-cols-2 gap-3 mb-8 sm:hidden">
               <div className="stat-card">
                 <p className="text-xs text-muted-foreground">Total Itens</p>
@@ -112,7 +111,6 @@ const ObraDashboard = () => {
               ))}
             </div>
 
-            {/* Quick stock view */}
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5 text-muted-foreground" />
@@ -131,17 +129,17 @@ const ObraDashboard = () => {
                     </thead>
                     <tbody>
                       {estoqueObra.map((item) => (
-                        <tr key={item.insumoId} className="border-b border-border/50 last:border-0">
+                        <tr key={item.insumo_id} className="border-b border-border/50 last:border-0">
                           <td className="p-3">
                             <p className="font-medium text-foreground">{item.insumo.name}</p>
                             <p className="text-xs text-muted-foreground">{item.insumo.category}</p>
                           </td>
                           <td className="p-3 text-right font-mono text-foreground">{item.quantity} {item.insumo.unit}</td>
                           <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">
-                            {item.averageUnitCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {item.average_unit_cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                           <td className="p-3 text-right font-mono font-medium text-foreground">
-                            {item.totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            {item.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
                         </tr>
                       ))}
