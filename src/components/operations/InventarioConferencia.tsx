@@ -14,6 +14,7 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
   const [quantidades, setQuantidades] = useState<Record<string, string>>({});
   const [justificativas, setJustificativas] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const setQtd = (insumoId: string, val: string) => setQuantidades(p => ({ ...p, [insumoId]: val }));
   const setJust = (insumoId: string, val: string) => setJustificativas(p => ({ ...p, [insumoId]: val }));
@@ -24,32 +25,46 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
     return fisica - qtdSistema;
   };
 
-  const handleSubmit = () => {
-    if (!selectedObraId) return;
+  const handleSubmit = async () => {
+    if (!selectedObraId || isSubmitting) return;
     let hasError = false;
 
-    estoqueObra.forEach(item => {
-      const fisica = parseFloat(quantidades[item.insumoId] || "");
-      if (isNaN(fisica)) return;
+    // Validate first
+    for (const item of estoqueObra) {
+      const fisica = parseFloat(quantidades[item.insumo_id] || "");
+      if (isNaN(fisica)) continue;
       const diferenca = fisica - item.quantity;
-      if (diferenca !== 0 && !justificativas[item.insumoId]?.trim()) {
+      if (diferenca !== 0 && !justificativas[item.insumo_id]?.trim()) {
         hasError = true;
-        return;
+        break;
       }
-      addInventarioItem({
-        obraId: selectedObraId, insumoId: item.insumoId,
-        quantidadeSistema: item.quantity, quantidadeFisica: fisica,
-        diferenca, justificativa: justificativas[item.insumoId] || "Sem divergência",
-        date: new Date().toISOString().split("T")[0],
-      });
-    });
+    }
 
     if (hasError) {
       toast.error("Preencha a justificativa para itens com divergência");
       return;
     }
-    toast.success("Inventário registrado com sucesso!");
-    setDone(true);
+
+    setIsSubmitting(true);
+    try {
+      for (const item of estoqueObra) {
+        const fisica = parseFloat(quantidades[item.insumo_id] || "");
+        if (isNaN(fisica)) continue;
+        const diferenca = fisica - item.quantity;
+        await addInventarioItem({
+          obraId: selectedObraId, insumoId: item.insumo_id,
+          quantidadeSistema: item.quantity, quantidadeFisica: fisica,
+          diferenca, justificativa: justificativas[item.insumo_id] || "Sem divergência",
+          date: new Date().toISOString().split("T")[0],
+        });
+      }
+      toast.success("Inventário registrado com sucesso!");
+      setDone(true);
+    } catch (err) {
+      toast.error("Erro ao registrar inventário");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (done) {
@@ -75,11 +90,11 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
 
       <div className="space-y-4">
         {estoqueObra.map(item => {
-          const dif = getDiferenca(item.insumoId, item.quantity);
+          const dif = getDiferenca(item.insumo_id, item.quantity);
           const hasDiff = dif !== null && dif !== 0;
 
           return (
-            <div key={item.insumoId} className="bg-card rounded-xl border border-border p-5 space-y-3">
+            <div key={item.insumo_id} className="bg-card rounded-xl border border-border p-5 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground">{item.insumo.name}</h3>
@@ -96,8 +111,8 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
                   <Label className="text-xs">Qtd Física</Label>
                   <Input
                     type="number" min="0" step="any"
-                    value={quantidades[item.insumoId] || ""}
-                    onChange={e => setQtd(item.insumoId, e.target.value)}
+                    value={quantidades[item.insumo_id] || ""}
+                    onChange={e => setQtd(item.insumo_id, e.target.value)}
                     placeholder="0"
                   />
                 </div>
@@ -115,8 +130,8 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
                 <div className="space-y-1">
                   <Label className="text-xs">Justificativa (obrigatória)</Label>
                   <Textarea
-                    value={justificativas[item.insumoId] || ""}
-                    onChange={e => setJust(item.insumoId, e.target.value)}
+                    value={justificativas[item.insumo_id] || ""}
+                    onChange={e => setJust(item.insumo_id, e.target.value)}
                     placeholder="Explique a divergência..."
                     rows={2}
                   />
@@ -128,8 +143,9 @@ const InventarioConferencia = ({ onBack }: { onBack: () => void }) => {
       </div>
 
       <div className="mt-6">
-        <Button onClick={handleSubmit} className="w-full" size="lg">
-          <ClipboardList className="w-4 h-4 mr-2" /> Concluir Inventário
+        <Button onClick={handleSubmit} className="w-full" size="lg" disabled={isSubmitting}>
+          <ClipboardList className="w-4 h-4 mr-2" />
+          {isSubmitting ? "Registrando..." : "Concluir Inventário"}
         </Button>
       </div>
     </div>

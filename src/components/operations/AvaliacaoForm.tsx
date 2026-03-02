@@ -12,6 +12,7 @@ interface AvaliacaoFormProps {
     documentacao: number;
     observacoes: string;
   }) => void;
+  isLoading?: boolean;
 }
 
 const criteria = [
@@ -21,7 +22,7 @@ const criteria = [
   { key: "documentacao", label: "Documentação" },
 ];
 
-const AvaliacaoForm = ({ onSubmit }: AvaliacaoFormProps) => {
+const AvaliacaoForm = ({ onSubmit, isLoading }: AvaliacaoFormProps) => {
   const [ratings, setRatings] = useState<Record<string, number>>({ pontualidade: 0, qualidade: 0, atendimento: 0, documentacao: 0 });
   const [observacoes, setObservacoes] = useState("");
 
@@ -55,8 +56,8 @@ const AvaliacaoForm = ({ onSubmit }: AvaliacaoFormProps) => {
         <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Comentários sobre o fornecedor..." rows={3} />
       </div>
 
-      <Button onClick={handleSubmit} className="w-full" disabled={!allRated}>
-        Concluir Avaliação e Registrar Entrada
+      <Button onClick={handleSubmit} className="w-full" disabled={!allRated || isLoading}>
+        {isLoading ? "Registrando..." : "Concluir Avaliação e Registrar Entrada"}
       </Button>
     </div>
   );

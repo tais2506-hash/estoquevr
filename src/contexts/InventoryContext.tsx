@@ -1,186 +1,356 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import type {
-  Obra, Insumo, Fornecedor, EstoqueItem, EntradaEstoque,
-  SaidaEstoque, Transferencia, Devolucao, Movimentacao,
-  FVM, AvaliacaoFornecedor, InventarioItem
-} from "@/types/inventory";
-import {
-  mockObras, mockInsumos, mockFornecedores, mockEstoque,
-  mockEntradas, mockSaidas, mockTransferencias, mockDevolucoes,
-  mockMovimentacoes, mockFVMs, mockAvaliacoes
-} from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+type EstoqueRow = {
+  id: string; obra_id: string; insumo_id: string; quantity: number;
+  average_unit_cost: number; total_value: number; updated_at: string;
+};
+type InsumoRow = {
+  id: string; code: string; name: string; unit: string; category: string;
+  created_at: string; updated_at: string;
+};
+type ObraRow = {
+  id: string; code: string; name: string; address: string; status: string;
+  created_at: string; updated_at: string;
+};
+type FornecedorRow = {
+  id: string; name: string; cnpj: string; contact: string | null;
+  created_at: string; updated_at: string;
+};
+type EntradaRow = {
+  id: string; obra_id: string; insumo_id: string; nota_fiscal: string;
+  fornecedor_id: string; quantity: number; unit_value: number; total_value: number;
+  date: string; fvm_id: string | null; avaliacao_id: string | null;
+  user_id: string; created_at: string;
+};
+type MovimentacaoRow = {
+  id: string; obra_id: string; insumo_id: string; type: string; quantity: number;
+  date: string; description: string; reference_id: string | null;
+  user_id: string; created_at: string;
+};
+type AvaliacaoRow = {
+  id: string; obra_id: string; fornecedor_id: string; nota_fiscal: string;
+  pontualidade: number; qualidade: number; atendimento: number; documentacao: number;
+  observacoes: string | null; date: string; user_id: string; created_at: string;
+};
+
+export type EstoqueWithInsumo = EstoqueRow & { insumo: InsumoRow };
 
 interface InventoryContextType {
-  obras: Obra[];
-  insumos: Insumo[];
-  fornecedores: Fornecedor[];
-  estoque: EstoqueItem[];
-  entradas: EntradaEstoque[];
-  saidas: SaidaEstoque[];
-  transferencias: Transferencia[];
-  devolucoes: Devolucao[];
-  movimentacoes: Movimentacao[];
-  fvms: FVM[];
-  avaliacoes: AvaliacaoFornecedor[];
-  inventarios: InventarioItem[];
+  obras: any[];
+  insumos: InsumoRow[];
+  fornecedores: any[];
+  estoque: EstoqueRow[];
+  entradas: any[];
+  movimentacoes: any[];
+  avaliacoes: any[];
+  loading: boolean;
 
   selectedObraId: string | null;
   setSelectedObraId: (id: string | null) => void;
-  getSelectedObra: () => Obra | undefined;
-  getEstoqueByObra: (obraId: string) => (EstoqueItem & { insumo: Insumo })[];
-  getEstoqueTotal: () => number;
+  getSelectedObra: () => any | undefined;
+  getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
-  addEntrada: (entrada: Omit<EntradaEstoque, "id" | "createdAt">) => void;
-  addSaida: (saida: Omit<SaidaEstoque, "id" | "createdAt">) => void;
-  addTransferencia: (t: Omit<Transferencia, "id" | "createdAt">) => void;
-  addDevolucao: (d: Omit<Devolucao, "id" | "createdAt">) => void;
-  addFVM: (fvm: Omit<FVM, "id" | "createdAt">) => string;
-  addAvaliacao: (av: Omit<AvaliacaoFornecedor, "id" | "createdAt">) => string;
-  addInventarioItem: (item: Omit<InventarioItem, "id" | "createdAt">) => void;
+  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; fornecedorId: string; quantity: number; unitValue: number; totalValue: number; date: string; fvmId: string; avaliacaoId: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string }) => Promise<void>;
+  addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
+  addDevolucao: (data: { obraId: string; entradaId: string; insumoId: string; fornecedorId: string; quantity: number; motivo: string; date: string }) => Promise<void>;
+  addFVM: (data: { obraId: string; notaFiscal: string; fornecedorId: string; date: string; quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: string }) => Promise<string>;
+  addAvaliacao: (data: { obraId: string; fornecedorId: string; notaFiscal: string; date: string; pontualidade: number; qualidade: number; atendimento: number; documentacao: number; observacoes: string }) => Promise<string>;
+  addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
+
+  refetchAll: () => void;
 }
 
 const InventoryContext = createContext<InventoryContextType | null>(null);
 
-function genId() { return Math.random().toString(36).substring(2, 10); }
-function now() { return new Date().toISOString(); }
-
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
-  const [obras] = useState<Obra[]>(mockObras);
-  const [insumos] = useState<Insumo[]>(mockInsumos);
-  const [fornecedores] = useState<Fornecedor[]>(mockFornecedores);
-  const [estoque, setEstoque] = useState<EstoqueItem[]>(mockEstoque);
-  const [entradas, setEntradas] = useState<EntradaEstoque[]>(mockEntradas);
-  const [saidas, setSaidas] = useState<SaidaEstoque[]>(mockSaidas);
-  const [transferencias, setTransferencias] = useState<Transferencia[]>(mockTransferencias);
-  const [devolucoes, setDevolucoes] = useState<Devolucao[]>(mockDevolucoes);
-  const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>(mockMovimentacoes);
-  const [fvms, setFvms] = useState<FVM[]>(mockFVMs);
-  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoFornecedor[]>(mockAvaliacoes);
-  const [inventarios, setInventarios] = useState<InventarioItem[]>([]);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id;
 
-  const [selectedObraId, setSelectedObraId] = useState<string | null>(() => {
+  const [selectedObraId, setSelectedObraIdState] = useState<string | null>(() => {
     return localStorage.getItem("vr_selected_obra");
   });
 
-  const handleSetSelectedObra = useCallback((id: string | null) => {
-    setSelectedObraId(id);
+  const setSelectedObraId = useCallback((id: string | null) => {
+    setSelectedObraIdState(id);
     if (id) localStorage.setItem("vr_selected_obra", id);
     else localStorage.removeItem("vr_selected_obra");
   }, []);
 
+  // Queries
+  const { data: obras = [], isLoading: l1 } = useQuery({
+    queryKey: ["obras"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("obras").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: insumos = [], isLoading: l2 } = useQuery({
+    queryKey: ["insumos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("insumos").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: fornecedores = [], isLoading: l3 } = useQuery({
+    queryKey: ["fornecedores"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fornecedores").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: estoque = [], isLoading: l4 } = useQuery({
+    queryKey: ["estoque"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("estoque").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: entradas = [] } = useQuery({
+    queryKey: ["entradas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("entradas").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: movimentacoes = [] } = useQuery({
+    queryKey: ["movimentacoes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("movimentacoes").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: avaliacoes = [] } = useQuery({
+    queryKey: ["avaliacoes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("avaliacoes").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  const loading = l1 || l2 || l3 || l4;
+
   const getSelectedObra = useCallback(() => obras.find(o => o.id === selectedObraId), [obras, selectedObraId]);
 
-  const getEstoqueByObra = useCallback((obraId: string) => {
+  const getEstoqueByObra = useCallback((obraId: string): EstoqueWithInsumo[] => {
     return estoque
-      .filter(e => e.obraId === obraId)
-      .map(e => ({ ...e, insumo: insumos.find(i => i.id === e.insumoId)! }))
+      .filter(e => e.obra_id === obraId)
+      .map(e => ({ ...e, insumo: insumos.find(i => i.id === e.insumo_id)! }))
       .filter(e => e.insumo);
   }, [estoque, insumos]);
 
-  const getEstoqueTotal = useCallback(() => {
-    return estoque.reduce((acc, e) => acc + e.totalValue, 0);
-  }, [estoque]);
+  const refetchAll = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["estoque"] });
+    queryClient.invalidateQueries({ queryKey: ["entradas"] });
+    queryClient.invalidateQueries({ queryKey: ["movimentacoes"] });
+    queryClient.invalidateQueries({ queryKey: ["avaliacoes"] });
+  }, [queryClient]);
 
-  const updateEstoque = useCallback((obraId: string, insumoId: string, qtyDelta: number, valueDelta: number) => {
-    setEstoque(prev => {
-      const idx = prev.findIndex(e => e.obraId === obraId && e.insumoId === insumoId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        const item = { ...updated[idx] };
-        item.quantity += qtyDelta;
-        item.totalValue += valueDelta;
-        item.averageUnitCost = item.quantity > 0 ? item.totalValue / item.quantity : 0;
-        updated[idx] = item;
-        return updated;
-      } else if (qtyDelta > 0) {
-        return [...prev, {
-          insumoId, obraId, quantity: qtyDelta,
-          averageUnitCost: valueDelta / qtyDelta,
-          totalValue: valueDelta,
-        }];
-      }
-      return prev;
-    });
-  }, []);
+  // Helper: update estoque
+  const updateEstoque = useCallback(async (obraId: string, insumoId: string, qtyDelta: number, valueDelta: number) => {
+    // Check if exists
+    const { data: existing } = await supabase
+      .from("estoque")
+      .select("*")
+      .eq("obra_id", obraId)
+      .eq("insumo_id", insumoId)
+      .single();
 
-  const addMovimentacao = useCallback((m: Omit<Movimentacao, "id" | "createdAt">) => {
-    setMovimentacoes(prev => [...prev, { ...m, id: genId(), createdAt: now() }]);
-  }, []);
-
-  const addEntrada = useCallback((entrada: Omit<EntradaEstoque, "id" | "createdAt">) => {
-    const id = genId();
-    setEntradas(prev => [...prev, { ...entrada, id, createdAt: now() }]);
-    updateEstoque(entrada.obraId, entrada.insumoId, entrada.quantity, entrada.totalValue);
-    addMovimentacao({
-      obraId: entrada.obraId, insumoId: entrada.insumoId, type: "entrada",
-      quantity: entrada.quantity, date: entrada.date,
-      description: `Entrada NF ${entrada.notaFiscal}`, referenceId: id,
-    });
-  }, [updateEstoque, addMovimentacao]);
-
-  const addSaida = useCallback((saida: Omit<SaidaEstoque, "id" | "createdAt">) => {
-    const id = genId();
-    const estoqueItem = estoque.find(e => e.obraId === saida.obraId && e.insumoId === saida.insumoId);
-    const unitCost = estoqueItem ? estoqueItem.averageUnitCost : 0;
-    setSaidas(prev => [...prev, { ...saida, id, createdAt: now() }]);
-    updateEstoque(saida.obraId, saida.insumoId, -saida.quantity, -(saida.quantity * unitCost));
-    addMovimentacao({
-      obraId: saida.obraId, insumoId: saida.insumoId, type: "saida",
-      quantity: saida.quantity, date: saida.date,
-      description: `Saída - ${saida.localAplicacao}`, referenceId: id,
-    });
-  }, [estoque, updateEstoque, addMovimentacao]);
-
-  const addTransferencia = useCallback((t: Omit<Transferencia, "id" | "createdAt">) => {
-    const id = genId();
-    const estoqueItem = estoque.find(e => e.obraId === t.obraOrigemId && e.insumoId === t.insumoId);
-    const unitCost = estoqueItem ? estoqueItem.averageUnitCost : 0;
-    setTransferencias(prev => [...prev, { ...t, id, createdAt: now() }]);
-    updateEstoque(t.obraOrigemId, t.insumoId, -t.quantity, -(t.quantity * unitCost));
-    updateEstoque(t.obraDestinoId, t.insumoId, t.quantity, t.quantity * unitCost);
-    addMovimentacao({ obraId: t.obraOrigemId, insumoId: t.insumoId, type: "transferencia_saida", quantity: t.quantity, date: t.date, description: `Transferência para obra`, referenceId: id });
-    addMovimentacao({ obraId: t.obraDestinoId, insumoId: t.insumoId, type: "transferencia_entrada", quantity: t.quantity, date: t.date, description: `Transferência de obra`, referenceId: id });
-  }, [estoque, updateEstoque, addMovimentacao]);
-
-  const addDevolucao = useCallback((d: Omit<Devolucao, "id" | "createdAt">) => {
-    const id = genId();
-    const estoqueItem = estoque.find(e => e.obraId === d.obraId && e.insumoId === d.insumoId);
-    const unitCost = estoqueItem ? estoqueItem.averageUnitCost : 0;
-    setDevolucoes(prev => [...prev, { ...d, id, createdAt: now() }]);
-    updateEstoque(d.obraId, d.insumoId, -d.quantity, -(d.quantity * unitCost));
-    addMovimentacao({ obraId: d.obraId, insumoId: d.insumoId, type: "devolucao", quantity: d.quantity, date: d.date, description: `Devolução - ${d.motivo}`, referenceId: id });
-  }, [estoque, updateEstoque, addMovimentacao]);
-
-  const addFVM = useCallback((fvm: Omit<FVM, "id" | "createdAt">) => {
-    const id = genId();
-    setFvms(prev => [...prev, { ...fvm, id, createdAt: now() }]);
-    return id;
-  }, []);
-
-  const addAvaliacao = useCallback((av: Omit<AvaliacaoFornecedor, "id" | "createdAt">) => {
-    const id = genId();
-    setAvaliacoes(prev => [...prev, { ...av, id, createdAt: now() }]);
-    return id;
-  }, []);
-
-  const addInventarioItem = useCallback((item: Omit<InventarioItem, "id" | "createdAt">) => {
-    const id = genId();
-    setInventarios(prev => [...prev, { ...item, id, createdAt: now() }]);
-    if (item.diferenca !== 0) {
-      const estoqueItem = estoque.find(e => e.obraId === item.obraId && e.insumoId === item.insumoId);
-      const unitCost = estoqueItem ? estoqueItem.averageUnitCost : 0;
-      updateEstoque(item.obraId, item.insumoId, item.diferenca, item.diferenca * unitCost);
-      addMovimentacao({ obraId: item.obraId, insumoId: item.insumoId, type: "ajuste_inventario", quantity: Math.abs(item.diferenca), date: item.date, description: `Ajuste inventário: ${item.justificativa}`, referenceId: id });
+    if (existing) {
+      const newQty = existing.quantity + qtyDelta;
+      const newTotal = existing.total_value + valueDelta;
+      const newAvg = newQty > 0 ? newTotal / newQty : 0;
+      await supabase.from("estoque").update({
+        quantity: newQty,
+        total_value: newTotal,
+        average_unit_cost: newAvg,
+      }).eq("id", existing.id);
+    } else if (qtyDelta > 0) {
+      await supabase.from("estoque").insert({
+        obra_id: obraId,
+        insumo_id: insumoId,
+        quantity: qtyDelta,
+        total_value: valueDelta,
+        average_unit_cost: valueDelta / qtyDelta,
+      });
     }
-  }, [estoque, updateEstoque, addMovimentacao]);
+  }, []);
+
+  const addMovimentacao = useCallback(async (data: { obraId: string; insumoId: string; type: string; quantity: number; date: string; description: string; referenceId?: string }) => {
+    if (!userId) return;
+    await supabase.from("movimentacoes").insert({
+      obra_id: data.obraId,
+      insumo_id: data.insumoId,
+      type: data.type as any,
+      quantity: data.quantity,
+      date: data.date,
+      description: data.description,
+      reference_id: data.referenceId || null,
+      user_id: userId,
+    });
+  }, [userId]);
+
+  const addAuditLog = useCallback(async (action: string, tableName: string, recordId?: string, obraId?: string, oldValue?: any, newValue?: any) => {
+    if (!userId) return;
+    await supabase.from("audit_logs").insert({
+      user_id: userId,
+      user_name: user?.name || "",
+      user_role: user?.role || "",
+      action,
+      table_name: tableName,
+      record_id: recordId || null,
+      obra_id: obraId || null,
+      old_value: oldValue || null,
+      new_value: newValue || null,
+    });
+  }, [userId, user]);
+
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; fornecedorId: string; quantity: number; unitValue: number; totalValue: number; date: string; fvmId: string; avaliacaoId: string }) => {
+    if (!userId) return;
+    const { data: inserted, error } = await supabase.from("entradas").insert({
+      obra_id: data.obraId, insumo_id: data.insumoId, nota_fiscal: data.notaFiscal,
+      fornecedor_id: data.fornecedorId, quantity: data.quantity, unit_value: data.unitValue,
+      total_value: data.totalValue, date: data.date, fvm_id: data.fvmId, avaliacao_id: data.avaliacaoId,
+      user_id: userId,
+    }).select().single();
+    if (error) throw error;
+
+    await updateEstoque(data.obraId, data.insumoId, data.quantity, data.totalValue);
+    await addMovimentacao({ obraId: data.obraId, insumoId: data.insumoId, type: "entrada", quantity: data.quantity, date: data.date, description: `Entrada NF ${data.notaFiscal}`, referenceId: inserted.id });
+    await addAuditLog("entrada_estoque", "entradas", inserted.id, data.obraId, null, data);
+    refetchAll();
+  }, [userId, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
+
+  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string }) => {
+    if (!userId) return;
+    const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
+    const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+
+    const { data: inserted, error } = await supabase.from("saidas").insert({
+      obra_id: data.obraId, insumo_id: data.insumoId, quantity: data.quantity,
+      date: data.date, local_aplicacao: data.localAplicacao, responsavel: data.responsavel,
+      user_id: userId,
+    }).select().single();
+    if (error) throw error;
+
+    await updateEstoque(data.obraId, data.insumoId, -data.quantity, -(data.quantity * unitCost));
+    await addMovimentacao({ obraId: data.obraId, insumoId: data.insumoId, type: "saida", quantity: data.quantity, date: data.date, description: `Saída - ${data.localAplicacao}`, referenceId: inserted.id });
+    await addAuditLog("saida_estoque", "saidas", inserted.id, data.obraId, null, data);
+    refetchAll();
+  }, [userId, estoque, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
+
+  const addTransferencia = useCallback(async (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => {
+    if (!userId) return;
+    const estoqueItem = estoque.find(e => e.obra_id === data.obraOrigemId && e.insumo_id === data.insumoId);
+    const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+
+    const { data: inserted, error } = await supabase.from("transferencias").insert({
+      obra_origem_id: data.obraOrigemId, obra_destino_id: data.obraDestinoId,
+      insumo_id: data.insumoId, quantity: data.quantity, date: data.date, user_id: userId,
+    }).select().single();
+    if (error) throw error;
+
+    await updateEstoque(data.obraOrigemId, data.insumoId, -data.quantity, -(data.quantity * unitCost));
+    await updateEstoque(data.obraDestinoId, data.insumoId, data.quantity, data.quantity * unitCost);
+    await addMovimentacao({ obraId: data.obraOrigemId, insumoId: data.insumoId, type: "transferencia_saida", quantity: data.quantity, date: data.date, description: "Transferência para obra", referenceId: inserted.id });
+    await addMovimentacao({ obraId: data.obraDestinoId, insumoId: data.insumoId, type: "transferencia_entrada", quantity: data.quantity, date: data.date, description: "Transferência de obra", referenceId: inserted.id });
+    await addAuditLog("transferencia", "transferencias", inserted.id, data.obraOrigemId, null, data);
+    refetchAll();
+  }, [userId, estoque, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
+
+  const addDevolucao = useCallback(async (data: { obraId: string; entradaId: string; insumoId: string; fornecedorId: string; quantity: number; motivo: string; date: string }) => {
+    if (!userId) return;
+    const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
+    const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+
+    const { data: inserted, error } = await supabase.from("devolucoes").insert({
+      obra_id: data.obraId, entrada_id: data.entradaId, insumo_id: data.insumoId,
+      fornecedor_id: data.fornecedorId, quantity: data.quantity, motivo: data.motivo,
+      date: data.date, user_id: userId,
+    }).select().single();
+    if (error) throw error;
+
+    await updateEstoque(data.obraId, data.insumoId, -data.quantity, -(data.quantity * unitCost));
+    await addMovimentacao({ obraId: data.obraId, insumoId: data.insumoId, type: "devolucao", quantity: data.quantity, date: data.date, description: `Devolução - ${data.motivo}`, referenceId: inserted.id });
+    await addAuditLog("devolucao", "devolucoes", inserted.id, data.obraId, null, data);
+    refetchAll();
+  }, [userId, estoque, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
+
+  const addFVM = useCallback(async (data: { obraId: string; notaFiscal: string; fornecedorId: string; date: string; quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: string }): Promise<string> => {
+    if (!userId) throw new Error("Not authenticated");
+    const { data: inserted, error } = await supabase.from("fvms").insert({
+      obra_id: data.obraId, nota_fiscal: data.notaFiscal, fornecedor_id: data.fornecedorId,
+      date: data.date, quantidade_conferida: data.quantidadeConferida,
+      qualidade_material: data.qualidadeMaterial, documentacao_ok: data.documentacaoOk,
+      observacoes: data.observacoes, status: data.status as any, user_id: userId,
+    }).select().single();
+    if (error) throw error;
+    await addAuditLog("fvm_criada", "fvms", inserted.id, data.obraId, null, data);
+    return inserted.id;
+  }, [userId, addAuditLog]);
+
+  const addAvaliacao = useCallback(async (data: { obraId: string; fornecedorId: string; notaFiscal: string; date: string; pontualidade: number; qualidade: number; atendimento: number; documentacao: number; observacoes: string }): Promise<string> => {
+    if (!userId) throw new Error("Not authenticated");
+    const { data: inserted, error } = await supabase.from("avaliacoes").insert({
+      obra_id: data.obraId, fornecedor_id: data.fornecedorId, nota_fiscal: data.notaFiscal,
+      date: data.date, pontualidade: data.pontualidade, qualidade: data.qualidade,
+      atendimento: data.atendimento, documentacao: data.documentacao,
+      observacoes: data.observacoes, user_id: userId,
+    }).select().single();
+    if (error) throw error;
+    await addAuditLog("avaliacao_criada", "avaliacoes", inserted.id, data.obraId, null, data);
+    return inserted.id;
+  }, [userId, addAuditLog]);
+
+  const addInventarioItem = useCallback(async (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => {
+    if (!userId) return;
+    const { data: inserted, error } = await supabase.from("inventarios").insert({
+      obra_id: data.obraId, insumo_id: data.insumoId, quantidade_sistema: data.quantidadeSistema,
+      quantidade_fisica: data.quantidadeFisica, diferenca: data.diferenca,
+      justificativa: data.justificativa, date: data.date, user_id: userId,
+    }).select().single();
+    if (error) throw error;
+
+    if (data.diferenca !== 0) {
+      const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
+      const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+      await updateEstoque(data.obraId, data.insumoId, data.diferenca, data.diferenca * unitCost);
+      await addMovimentacao({ obraId: data.obraId, insumoId: data.insumoId, type: "ajuste_inventario", quantity: Math.abs(data.diferenca), date: data.date, description: `Ajuste inventário: ${data.justificativa}`, referenceId: inserted.id });
+    }
+    await addAuditLog("inventario", "inventarios", inserted.id, data.obraId, null, data);
+    refetchAll();
+  }, [userId, estoque, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
   return (
     <InventoryContext.Provider value={{
-      obras, insumos, fornecedores, estoque, entradas, saidas,
-      transferencias, devolucoes, movimentacoes, fvms, avaliacoes, inventarios,
-      selectedObraId, setSelectedObraId: handleSetSelectedObra, getSelectedObra,
-      getEstoqueByObra, getEstoqueTotal,
+      obras, insumos, fornecedores, estoque, entradas, movimentacoes, avaliacoes, loading,
+      selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
       addEntrada, addSaida, addTransferencia, addDevolucao, addFVM, addAvaliacao, addInventarioItem,
+      refetchAll,
     }}>
       {children}
     </InventoryContext.Provider>

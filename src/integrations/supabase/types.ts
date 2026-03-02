@@ -14,16 +14,768 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_value: Json | null
+          obra_id: string | null
+          old_value: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_id: string | null
+          user_name: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          obra_id?: string | null
+          old_value?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_value?: Json | null
+          obra_id?: string | null
+          old_value?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_id?: string | null
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avaliacoes: {
+        Row: {
+          atendimento: number
+          created_at: string
+          date: string
+          documentacao: number
+          fornecedor_id: string
+          id: string
+          nota_fiscal: string
+          obra_id: string
+          observacoes: string | null
+          pontualidade: number
+          qualidade: number
+          user_id: string
+        }
+        Insert: {
+          atendimento: number
+          created_at?: string
+          date: string
+          documentacao: number
+          fornecedor_id: string
+          id?: string
+          nota_fiscal: string
+          obra_id: string
+          observacoes?: string | null
+          pontualidade: number
+          qualidade: number
+          user_id: string
+        }
+        Update: {
+          atendimento?: number
+          created_at?: string
+          date?: string
+          documentacao?: number
+          fornecedor_id?: string
+          id?: string
+          nota_fiscal?: string
+          obra_id?: string
+          observacoes?: string | null
+          pontualidade?: number
+          qualidade?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuracoes: {
+        Row: {
+          currency: string
+          dark_mode: boolean
+          id: string
+          logo_url: string | null
+          primary_color: string
+          system_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency?: string
+          dark_mode?: boolean
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          system_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          dark_mode?: boolean
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          system_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      devolucoes: {
+        Row: {
+          created_at: string
+          date: string
+          entrada_id: string
+          fornecedor_id: string
+          id: string
+          insumo_id: string
+          motivo: string
+          obra_id: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          entrada_id: string
+          fornecedor_id: string
+          id?: string
+          insumo_id: string
+          motivo: string
+          obra_id: string
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          entrada_id?: string
+          fornecedor_id?: string
+          id?: string
+          insumo_id?: string
+          motivo?: string
+          obra_id?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devolucoes_entrada_id_fkey"
+            columns: ["entrada_id"]
+            isOneToOne: false
+            referencedRelation: "entradas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devolucoes_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devolucoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devolucoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entradas: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          date: string
+          fornecedor_id: string
+          fvm_id: string | null
+          id: string
+          insumo_id: string
+          nota_fiscal: string
+          obra_id: string
+          quantity: number
+          total_value: number
+          unit_value: number
+          user_id: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          date: string
+          fornecedor_id: string
+          fvm_id?: string | null
+          id?: string
+          insumo_id: string
+          nota_fiscal: string
+          obra_id: string
+          quantity: number
+          total_value: number
+          unit_value: number
+          user_id: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          date?: string
+          fornecedor_id?: string
+          fvm_id?: string | null
+          id?: string
+          insumo_id?: string
+          nota_fiscal?: string
+          obra_id?: string
+          quantity?: number
+          total_value?: number
+          unit_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estoque: {
+        Row: {
+          average_unit_cost: number
+          id: string
+          insumo_id: string
+          obra_id: string
+          quantity: number
+          total_value: number
+          updated_at: string
+        }
+        Insert: {
+          average_unit_cost?: number
+          id?: string
+          insumo_id: string
+          obra_id: string
+          quantity?: number
+          total_value?: number
+          updated_at?: string
+        }
+        Update: {
+          average_unit_cost?: number
+          id?: string
+          insumo_id?: string
+          obra_id?: string
+          quantity?: number
+          total_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fornecedores: {
+        Row: {
+          cnpj: string
+          contact: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj: string
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string
+          contact?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fvms: {
+        Row: {
+          created_at: string
+          date: string
+          documentacao_ok: boolean
+          fornecedor_id: string
+          id: string
+          nota_fiscal: string
+          obra_id: string
+          observacoes: string | null
+          qualidade_material: boolean
+          quantidade_conferida: boolean
+          status: Database["public"]["Enums"]["fvm_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          documentacao_ok?: boolean
+          fornecedor_id: string
+          id?: string
+          nota_fiscal: string
+          obra_id: string
+          observacoes?: string | null
+          qualidade_material?: boolean
+          quantidade_conferida?: boolean
+          status?: Database["public"]["Enums"]["fvm_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          documentacao_ok?: boolean
+          fornecedor_id?: string
+          id?: string
+          nota_fiscal?: string
+          obra_id?: string
+          observacoes?: string | null
+          qualidade_material?: boolean
+          quantidade_conferida?: boolean
+          status?: Database["public"]["Enums"]["fvm_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fvms_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fvms_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insumos: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          id: string
+          name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventarios: {
+        Row: {
+          created_at: string
+          date: string
+          diferenca: number
+          id: string
+          insumo_id: string
+          justificativa: string
+          obra_id: string
+          quantidade_fisica: number
+          quantidade_sistema: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          diferenca: number
+          id?: string
+          insumo_id: string
+          justificativa: string
+          obra_id: string
+          quantidade_fisica: number
+          quantidade_sistema: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          diferenca?: number
+          id?: string
+          insumo_id?: string
+          justificativa?: string
+          obra_id?: string
+          quantidade_fisica?: number
+          quantidade_sistema?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventarios_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventarios_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movimentacoes: {
+        Row: {
+          created_at: string
+          date: string
+          description: string
+          id: string
+          insumo_id: string
+          obra_id: string
+          quantity: number
+          reference_id: string | null
+          type: Database["public"]["Enums"]["movimentacao_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string
+          id?: string
+          insumo_id: string
+          obra_id: string
+          quantity: number
+          reference_id?: string | null
+          type: Database["public"]["Enums"]["movimentacao_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          insumo_id?: string
+          obra_id?: string
+          quantity?: number
+          reference_id?: string | null
+          type?: Database["public"]["Enums"]["movimentacao_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obras: {
+        Row: {
+          address: string
+          code: string
+          created_at: string
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["obra_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["obra_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["obra_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saidas: {
+        Row: {
+          created_at: string
+          date: string
+          edit_reason: string | null
+          edited_at: string | null
+          id: string
+          insumo_id: string
+          local_aplicacao: string
+          obra_id: string
+          quantity: number
+          responsavel: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          id?: string
+          insumo_id: string
+          local_aplicacao: string
+          obra_id: string
+          quantity: number
+          responsavel: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          id?: string
+          insumo_id?: string
+          local_aplicacao?: string
+          obra_id?: string
+          quantity?: number
+          responsavel?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saidas_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saidas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transferencias: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          insumo_id: string
+          obra_destino_id: string
+          obra_origem_id: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          insumo_id: string
+          obra_destino_id: string
+          obra_origem_id: string
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          insumo_id?: string
+          obra_destino_id?: string
+          obra_origem_id?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_obra_destino_id_fkey"
+            columns: ["obra_destino_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_obra_origem_id_fkey"
+            columns: ["obra_origem_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "almoxarifado"
+      fvm_status: "pendente" | "aprovada" | "reprovada"
+      movimentacao_type:
+        | "entrada"
+        | "saida"
+        | "transferencia_entrada"
+        | "transferencia_saida"
+        | "devolucao"
+        | "ajuste_inventario"
+      obra_status: "ativa" | "concluida" | "pausada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +902,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "almoxarifado"],
+      fvm_status: ["pendente", "aprovada", "reprovada"],
+      movimentacao_type: [
+        "entrada",
+        "saida",
+        "transferencia_entrada",
+        "transferencia_saida",
+        "devolucao",
+        "ajuste_inventario",
+      ],
+      obra_status: ["ativa", "concluida", "pausada"],
+    },
   },
 } as const

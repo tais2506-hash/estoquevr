@@ -10,25 +10,33 @@ import { toast } from "sonner";
 const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
   const { obras, selectedObraId, getEstoqueByObra, addTransferencia } = useInventory();
   const [done, setDone] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     obraDestinoId: "", insumoId: "", quantity: "", date: new Date().toISOString().split("T")[0],
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
-  const selectedItem = estoqueObra.find(e => e.insumoId === formData.insumoId);
+  const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
   const maxQty = selectedItem?.quantity || 0;
   const outrasObras = obras.filter(o => o.id !== selectedObraId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedObraId) return;
+    if (!selectedObraId || isSubmitting) return;
     const qty = parseFloat(formData.quantity);
     if (qty > maxQty) { toast.error("Estoque insuficiente"); return; }
     if (!formData.obraDestinoId || !formData.insumoId || !qty) { toast.error("Preencha todos os campos"); return; }
 
-    addTransferencia({ obraOrigemId: selectedObraId, obraDestinoId: formData.obraDestinoId, insumoId: formData.insumoId, quantity: qty, date: formData.date });
-    toast.success("Transferência realizada!");
-    setDone(true);
+    setIsSubmitting(true);
+    try {
+      await addTransferencia({ obraOrigemId: selectedObraId, obraDestinoId: formData.obraDestinoId, insumoId: formData.insumoId, quantity: qty, date: formData.date });
+      toast.success("Transferência realizada!");
+      setDone(true);
+    } catch (err) {
+      toast.error("Erro ao transferir");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (done) {
@@ -69,7 +77,7 @@ const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
             <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
             <SelectContent>
               {estoqueObra.map(e => (
-                <SelectItem key={e.insumoId} value={e.insumoId}>
+                <SelectItem key={e.insumo_id} value={e.insumo_id}>
                   {e.insumo.name} — Disp: {e.quantity} {e.insumo.unit}
                 </SelectItem>
               ))}
@@ -88,7 +96,9 @@ const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
 
-        <Button type="submit" className="w-full">Transferir</Button>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Transferindo..." : "Transferir"}
+        </Button>
       </form>
     </div>
   );
