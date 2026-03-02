@@ -1,0 +1,165 @@
+import { useState } from "react";
+import { useInventory } from "@/contexts/InventoryContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { ArrowUp, ArrowDown, ArrowLeftRight, PackageX, ClipboardList, Building2, LogOut, ArrowLeft, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SubirEstoque from "@/components/operations/SubirEstoque";
+import BaixarEstoque from "@/components/operations/BaixarEstoque";
+import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
+import DevolucaoEstoque from "@/components/operations/DevolucaoEstoque";
+import InventarioConferencia from "@/components/operations/InventarioConferencia";
+
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "devolver" | "inventario";
+
+const operations = [
+  { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success" },
+  { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive" },
+  { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info" },
+  { key: "devolver" as const, label: "Devolução ao Fornecedor", icon: PackageX, description: "Devolver materiais", color: "text-warning" },
+  { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary" },
+];
+
+const ObraDashboard = () => {
+  const [view, setView] = useState<OperationView>("menu");
+  const { getSelectedObra, getEstoqueByObra, selectedObraId } = useInventory();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const obra = getSelectedObra();
+
+  if (!obra || !selectedObraId) {
+    navigate("/obras");
+    return null;
+  }
+
+  const estoqueObra = getEstoqueByObra(selectedObraId);
+  const totalValue = estoqueObra.reduce((acc, e) => acc + e.totalValue, 0);
+  const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
+
+  const renderOperation = () => {
+    switch (view) {
+      case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
+      case "baixar": return <BaixarEstoque onBack={() => setView("menu")} />;
+      case "transferir": return <TransferenciaEstoque onBack={() => setView("menu")} />;
+      case "devolver": return <DevolucaoEstoque onBack={() => setView("menu")} />;
+      case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border px-6 py-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/obras")}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">{obra.name}</h1>
+              <p className="text-xs text-muted-foreground">{obra.address}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-6 text-sm">
+              <div className="text-center">
+                <p className="text-muted-foreground text-xs">Itens</p>
+                <p className="font-bold text-foreground">{totalItems}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-muted-foreground text-xs">Valor Imobilizado</p>
+                <p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => { logout(); navigate("/"); }}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-6 py-8">
+        {view === "menu" ? (
+          <div className="animate-fade-in">
+            {/* Stats cards on mobile */}
+            <div className="grid grid-cols-2 gap-3 mb-8 sm:hidden">
+              <div className="stat-card">
+                <p className="text-xs text-muted-foreground">Total Itens</p>
+                <p className="text-xl font-bold text-foreground">{totalItems}</p>
+              </div>
+              <div className="stat-card">
+                <p className="text-xs text-muted-foreground">Valor Imobilizado</p>
+                <p className="text-xl font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+              </div>
+            </div>
+
+            <h2 className="text-lg font-semibold text-foreground mb-5">Operações</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {operations.map((op, idx) => (
+                <button
+                  key={op.key}
+                  onClick={() => setView(op.key)}
+                  className="operation-btn animate-fade-in"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                >
+                  <op.icon className={`w-10 h-10 ${op.color}`} strokeWidth={1.5} />
+                  <span className="font-semibold text-foreground text-sm">{op.label}</span>
+                  <span className="text-xs text-muted-foreground">{op.description}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Quick stock view */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5 text-muted-foreground" />
+                Estoque Atual
+              </h3>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
+                        <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
+                        <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">Unit.</th>
+                        <th className="text-right p-3 font-medium text-muted-foreground">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {estoqueObra.map((item) => (
+                        <tr key={item.insumoId} className="border-b border-border/50 last:border-0">
+                          <td className="p-3">
+                            <p className="font-medium text-foreground">{item.insumo.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.insumo.category}</p>
+                          </td>
+                          <td className="p-3 text-right font-mono text-foreground">{item.quantity} {item.insumo.unit}</td>
+                          <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">
+                            {item.averageUnitCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </td>
+                          <td className="p-3 text-right font-mono font-medium text-foreground">
+                            {item.totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </td>
+                        </tr>
+                      ))}
+                      {estoqueObra.length === 0 && (
+                        <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum item no estoque</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          renderOperation()
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default ObraDashboard;
