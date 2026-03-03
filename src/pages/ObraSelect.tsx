@@ -58,7 +58,7 @@ const ObraSelect = () => {
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
                 <BarChart3 className="w-4 h-4 mr-2" />
-                Dashboard
+                Menu
               </Button>
             )}
             <div className="text-right hidden sm:block">
