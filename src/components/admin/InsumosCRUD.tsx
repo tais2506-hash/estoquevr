@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -23,46 +25,50 @@ const InsumosCRUD = () => {
     controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false,
     material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0,
   });
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-  const filtered = insumos.filter(i =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    i.code.toLowerCase().includes(search.toLowerCase()) ||
-    i.category.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filters
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  const categories = [...new Set(insumos.map(i => i.category).filter(Boolean))];
+
+  const filtered = insumos.filter(i => {
+    const matchSearch = i.name.toLowerCase().includes(search.toLowerCase()) ||
+      i.code.toLowerCase().includes(search.toLowerCase()) ||
+      i.category.toLowerCase().includes(search.toLowerCase());
+    if (filterCategory !== "all" && i.category !== filterCategory) return false;
+    return matchSearch;
+  });
 
   const resetForm = () => {
     setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0 });
     setEditing(null);
   };
 
+  const clearFilters = () => { setFilterCategory("all"); setSearch(""); };
+  const hasFilters = filterCategory !== "all" || search;
+
   const openEdit = (insumo: any) => {
     setEditing(insumo);
     setForm({
       name: insumo.name, code: insumo.code, unit: insumo.unit, category: insumo.category || "",
-      controla_estoque: insumo.controla_estoque ?? true,
-      controla_consumo: insumo.controla_consumo ?? true,
+      controla_estoque: insumo.controla_estoque ?? true, controla_consumo: insumo.controla_consumo ?? true,
       controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
       material_nao_estocavel: insumo.material_nao_estocavel ?? false,
-      exige_servico_baixa: insumo.exige_servico_baixa ?? false,
-      estoque_minimo: insumo.estoque_minimo ?? 0,
+      exige_servico_baixa: insumo.exige_servico_baixa ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.code || !form.unit) {
-      toast.error("Nome, código e unidade são obrigatórios");
-      return;
-    }
+    if (!form.name || !form.code || !form.unit) { toast.error("Nome, código e unidade são obrigatórios"); return; }
     try {
       const payload = {
         name: form.name, code: form.code, unit: form.unit, category: form.category,
-        controla_estoque: form.controla_estoque,
-        controla_consumo: form.controla_consumo,
-        controla_rastreabilidade: form.controla_rastreabilidade,
-        material_nao_estocavel: form.material_nao_estocavel,
-        exige_servico_baixa: form.exige_servico_baixa,
-        estoque_minimo: form.estoque_minimo,
+        controla_estoque: form.controla_estoque, controla_consumo: form.controla_consumo,
+        controla_rastreabilidade: form.controla_rastreabilidade, material_nao_estocavel: form.material_nao_estocavel,
+        exige_servico_baixa: form.exige_servico_baixa, estoque_minimo: form.estoque_minimo,
       };
       if (editing) {
         const { error } = await supabase.from("insumos").update(payload as any).eq("id", editing.id);
@@ -74,11 +80,8 @@ const InsumosCRUD = () => {
         toast.success("Insumo cadastrado");
       }
       queryClient.invalidateQueries({ queryKey: ["insumos"] });
-      setDialogOpen(false);
-      resetForm();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao salvar");
-    }
+      setDialogOpen(false); resetForm();
+    } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
   };
 
   const handleDelete = async (id: string) => {
@@ -87,12 +90,25 @@ const InsumosCRUD = () => {
       if (error) throw error;
       toast.success("Insumo desativado");
       queryClient.invalidateQueries({ queryKey: ["insumos"] });
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao excluir");
-    }
+    } catch (err: any) { toast.error(err.message || "Erro ao excluir"); }
   };
 
-  // Check for low stock alerts
+  const handleBulkDelete = async () => {
+    try {
+      const { error } = await supabase.from("insumos").update({ deleted_at: new Date().toISOString() } as any).in("id", selected);
+      if (error) throw error;
+      toast.success(`${selected.length} insumo(s) desativado(s)`);
+      setSelected([]); setBulkDeleteOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["insumos"] });
+    } catch (err: any) { toast.error(err.message || "Erro ao desativar"); }
+  };
+
+  const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleAll = () => {
+    const ids = filtered.map(i => i.id);
+    setSelected(prev => prev.length === ids.length ? [] : ids);
+  };
+
   const getStockAlert = (insumoId: string) => {
     const ins = insumos.find(i => i.id === insumoId);
     if (!ins || !ins.estoque_minimo || ins.estoque_minimo <= 0) return false;
@@ -107,74 +123,64 @@ const InsumosCRUD = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Buscar insumos..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Insumo</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Insumo" : "Novo Insumo"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do insumo" />
+        <div className="flex items-center gap-2">
+          {selected.length > 0 && (
+            <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-1" />Desativar selecionados ({selected.length})</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Desativar {selected.length} insumo(s)?</AlertDialogTitle><AlertDialogDescription>Os insumos serão desativados (soft delete). O histórico será mantido.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleBulkDelete}>Desativar</AlertDialogAction></AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Insumo</Button></DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>{editing ? "Editar Insumo" : "Novo Insumo"}</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2"><Label>Nome</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do insumo" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2"><Label>Código</Label><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Ex: INS-001" /></div>
+                  <div className="space-y-2"><Label>Unidade</Label><Input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="Ex: kg, un, m" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2"><Label>Categoria</Label><Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Ex: Elétrico" /></div>
+                  <div className="space-y-2"><Label>Estoque Mínimo</Label><Input type="number" min="0" step="any" value={form.estoque_minimo} onChange={e => setForm({ ...form, estoque_minimo: parseFloat(e.target.value) || 0 })} /></div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Controles</p>
+                  <div className="flex items-center justify-between"><Label className="text-sm">Controla estoque?</Label><Switch checked={form.controla_estoque} onCheckedChange={v => setForm({ ...form, controla_estoque: v })} /></div>
+                  <div className="flex items-center justify-between"><Label className="text-sm">Controla consumo?</Label><Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} /></div>
+                  <div className="flex items-center justify-between"><Label className="text-sm">Controla rastreabilidade?</Label><Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} /></div>
+                  <div className="flex items-center justify-between"><Label className="text-sm">Material não estocável?</Label><Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} /></div>
+                  <div className="flex items-center justify-between"><Label className="text-sm">Exige vínculo com serviço?</Label><Switch checked={form.exige_servico_baixa} onCheckedChange={v => setForm({ ...form, exige_servico_baixa: v })} /></div>
+                </div>
+                <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Código</Label>
-                  <Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Ex: INS-001" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unidade</Label>
-                  <Input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="Ex: kg, un, m" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Categoria</Label>
-                  <Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Ex: Elétrico" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Estoque Mínimo</Label>
-                  <Input type="number" min="0" step="any" value={form.estoque_minimo} onChange={e => setForm({ ...form, estoque_minimo: parseFloat(e.target.value) || 0 })} />
-                </div>
-              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <p className="text-sm font-medium text-foreground">Controles</p>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Controla estoque?</Label>
-                  <Switch checked={form.controla_estoque} onCheckedChange={v => setForm({ ...form, controla_estoque: v })} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Controla consumo?</Label>
-                  <Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Controla rastreabilidade?</Label>
-                  <Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Material não estocável?</Label>
-                  <Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Exige vínculo com serviço?</Label>
-                  <Switch checked={form.exige_servico_baixa} onCheckedChange={v => setForm({ ...form, exige_servico_baixa: v })} />
-                </div>
-              </div>
-
-              <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap bg-muted/30 rounded-lg p-3">
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="w-4 h-4 mr-1" />Limpar filtros</Button>}
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
+              <th className="p-3 w-10"><Checkbox checked={selected.length === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></th>
               <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Código</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
@@ -188,6 +194,7 @@ const InsumosCRUD = () => {
               const lowStock = getStockAlert(i.id);
               return (
                 <tr key={i.id} className={`border-b border-border/50 last:border-0 ${lowStock ? "bg-destructive/5" : ""}`}>
+                  <td className="p-3"><Checkbox checked={selected.includes(i.id)} onCheckedChange={() => toggleSelect(i.id)} /></td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{i.name}</span>
@@ -209,18 +216,10 @@ const InsumosCRUD = () => {
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(i)}><Pencil className="w-4 h-4" /></Button>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                        </AlertDialogTrigger>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button></AlertDialogTrigger>
                         <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Desativar insumo?</AlertDialogTitle>
-                            <AlertDialogDescription>O insumo será desativado e não aparecerá mais em novas operações. O histórico será mantido.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(i.id)}>Desativar</AlertDialogAction>
-                          </AlertDialogFooter>
+                          <AlertDialogHeader><AlertDialogTitle>Desativar insumo?</AlertDialogTitle><AlertDialogDescription>O insumo será desativado. O histórico será mantido.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(i.id)}>Desativar</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
@@ -228,9 +227,7 @@ const InsumosCRUD = () => {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum insumo encontrado</td></tr>
-            )}
+            {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum insumo encontrado</td></tr>}
           </tbody>
         </table>
       </div>

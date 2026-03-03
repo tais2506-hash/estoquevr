@@ -748,6 +748,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          status: string
           updated_at: string
           user_id: string
         }
@@ -756,6 +757,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -764,6 +766,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -993,7 +996,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "almoxarifado"
+      app_role: "admin" | "almoxarifado" | "gestor_obra" | "visualizador"
       fvm_status: "pendente" | "aprovada" | "reprovada"
       location_type: "torre" | "pavimento" | "unidade" | "ambiente"
       movimentacao_type:
@@ -1131,7 +1134,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "almoxarifado"],
+      app_role: ["admin", "almoxarifado", "gestor_obra", "visualizador"],
       fvm_status: ["pendente", "aprovada", "reprovada"],
       location_type: ["torre", "pavimento", "unidade", "ambiente"],
       movimentacao_type: [
