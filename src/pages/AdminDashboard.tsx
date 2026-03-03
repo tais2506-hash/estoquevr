@@ -13,6 +13,7 @@ import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import FVMControl from "@/components/admin/FVMControl";
 import AvaliacaoControl from "@/components/admin/AvaliacaoControl";
+import UserManagement from "@/components/admin/UserManagement";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
 import ReportsPage from "@/components/reports/ReportsPage";
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="locais">Locais</TabsTrigger>
               <TabsTrigger value="fvm">FVM</TabsTrigger>
               <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
+              <TabsTrigger value="usuarios">Usuários</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
@@ -121,6 +123,7 @@ const AdminDashboard = () => {
           <TabsContent value="locais"><LocationsCRUD /></TabsContent>
           <TabsContent value="fvm"><FVMControl /></TabsContent>
           <TabsContent value="avaliacoes"><AvaliacaoControl /></TabsContent>
+          <TabsContent value="usuarios"><UserManagement /></TabsContent>
         </Tabs>
       </main>
     </div>
