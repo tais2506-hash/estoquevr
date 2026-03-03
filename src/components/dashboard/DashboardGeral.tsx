@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  DollarSign, Building2, TrendingUp, TrendingDown, Star, Package, AlertTriangle, Users,
+  DollarSign, Building2, TrendingUp, TrendingDown, Star, Package, AlertTriangle, Users, X,
 } from "lucide-react";
 
 const COLORS = [
@@ -25,8 +27,10 @@ const COLORS = [
 const DashboardGeral = () => {
   const { obras, estoque, insumos, movimentacoes, entradas, avaliacoes, fornecedores, getEstoqueByObra } = useInventory();
   const [incluirArquivadas, setIncluirArquivadas] = useState(false);
+  const [selectedObraId, setSelectedObraId] = useState<string>("all");
 
-  const filteredObras = incluirArquivadas ? obras : obras.filter(o => o.status !== "arquivada");
+  const preFilteredObras = incluirArquivadas ? obras : obras.filter(o => o.status !== "arquivada");
+  const filteredObras = selectedObraId === "all" ? preFilteredObras : preFilteredObras.filter(o => o.id === selectedObraId);
 
   // Consolidated Financial
   const obraStats = useMemo(() =>
@@ -113,12 +117,33 @@ const DashboardGeral = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toggle archived */}
-      <div className="flex items-center gap-3">
-        <Switch id="incluir-arq" checked={incluirArquivadas} onCheckedChange={setIncluirArquivadas} />
-        <Label htmlFor="incluir-arq" className="text-sm text-muted-foreground">
-          Incluir obras arquivadas
-        </Label>
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Switch id="incluir-arq" checked={incluirArquivadas} onCheckedChange={setIncluirArquivadas} />
+          <Label htmlFor="incluir-arq" className="text-sm text-muted-foreground">
+            Incluir obras arquivadas
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm text-muted-foreground">Obra:</Label>
+          <Select value={selectedObraId} onValueChange={setSelectedObraId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Todas as obras" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as obras</SelectItem>
+              {preFilteredObras.map(o => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedObraId !== "all" && (
+            <Button variant="ghost" size="icon" onClick={() => setSelectedObraId("all")} className="h-8 w-8">
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Consolidated Financial Cards */}
