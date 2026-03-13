@@ -42,7 +42,7 @@ const InsumosCRUD = () => {
   });
 
   const resetForm = () => {
-    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0 });
+    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, estoque_minimo: 0 });
     setEditing(null);
   };
 
