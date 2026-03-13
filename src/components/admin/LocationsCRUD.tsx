@@ -279,7 +279,7 @@ const LocationsCRUD = () => {
                   <SelectContent>
                     <SelectItem value="none">Nenhum (raiz)</SelectItem>
                     {parentOptions.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id)} ({typeLabels[l.type] || l.type})</SelectItem>
+                      <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id, true)} ({typeLabels[l.type] || l.type})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
