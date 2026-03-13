@@ -207,7 +207,7 @@ const InsumosCRUD = () => {
                     <div className="flex flex-wrap gap-1">
                       {(i as any).material_nao_estocavel && <Badge variant="outline" className="text-xs">N.Est</Badge>}
                       {(i as any).controla_rastreabilidade && <Badge variant="outline" className="text-xs">Rast</Badge>}
-                      {(i as any).exige_servico_baixa && <Badge variant="outline" className="text-xs">Svc</Badge>}
+                      
                       {(i as any).estoque_minimo > 0 && <Badge variant="outline" className="text-xs">Min:{(i as any).estoque_minimo}</Badge>}
                     </div>
                   </td>
