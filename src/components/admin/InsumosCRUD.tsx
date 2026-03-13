@@ -13,6 +13,15 @@ import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import SpreadsheetImport from "./SpreadsheetImport";
+
+const insumoColumns = [
+  { key: "code", label: "Código", required: true, example: "INS-001" },
+  { key: "name", label: "Nome", required: true, example: "Cimento CP-II" },
+  { key: "unit", label: "Unidade", required: true, example: "kg" },
+  { key: "category", label: "Categoria", required: false, example: "Estrutural" },
+  { key: "estoque_minimo", label: "Estoque Mínimo", required: false, example: "100" },
+];
 
 const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
