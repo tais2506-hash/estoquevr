@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  DollarSign, Package, Activity, AlertTriangle, TrendingDown, Star, ArrowUpDown,
+  DollarSign, Package, Activity, AlertTriangle, TrendingDown, ArrowUpDown,
 } from "lucide-react";
 import { subDays, parseISO, isAfter } from "date-fns";
 
@@ -21,12 +21,11 @@ const COLORS = [
 ];
 
 const DashboardObra = () => {
-  const { obras, estoque, insumos, movimentacoes, entradas, avaliacoes, fornecedores, getEstoqueByObra } = useInventory();
+  const { obras, estoque, insumos, movimentacoes, entradas, getEstoqueByObra } = useInventory();
   const [selectedObraId, setSelectedObraId] = useState<string>("");
   const [periodDays, setPeriodDays] = useState<string>("30");
 
   const activeObras = obras.filter(o => o.status !== "arquivada");
-  const obra = activeObras.find(o => o.id === selectedObraId);
 
   const periodStart = subDays(new Date(), parseInt(periodDays));
 
@@ -45,11 +44,6 @@ const DashboardObra = () => {
       try { return isAfter(parseISO(m.date), periodStart); } catch { return false; }
     }),
     [movsObra, periodStart]
-  );
-
-  const entradasObra = useMemo(() =>
-    entradas.filter(e => e.obra_id === selectedObraId),
-    [entradas, selectedObraId]
   );
 
   // Financial
@@ -112,17 +106,6 @@ const DashboardObra = () => {
     [itensSemMovimentacao]
   );
 
-  const fornecedorMediaBaixa = useMemo(() => {
-    const fornIds = [...new Set(entradasObra.map(e => e.fornecedor_id))];
-    return fornIds.map(fId => {
-      const avs = avaliacoes.filter(a => a.fornecedor_id === fId && a.obra_id === selectedObraId);
-      const avg = avs.length > 0
-        ? avs.reduce((a, av) => a + (av.pontualidade + av.qualidade + av.atendimento + av.documentacao) / 4, 0) / avs.length
-        : 0;
-      return { forn: fornecedores.find(f => f.id === fId), media: Math.round(avg * 10) / 10, avs: avs.length };
-    }).filter(f => f.avs > 0 && f.media < 3).sort((a, b) => a.media - b.media);
-  }, [entradasObra, avaliacoes, fornecedores, selectedObraId]);
-
   // Pie chart for value distribution
   const pieData = top5Valor.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
 
@@ -151,22 +134,15 @@ const DashboardObra = () => {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <Select value={selectedObraId} onValueChange={setSelectedObraId}>
-          <SelectTrigger className="w-72">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {activeObras.map(o => (
-              <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-            ))}
+            {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={periodDays} onValueChange={setPeriodDays}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="7">Últimos 7 dias</SelectItem>
             <SelectItem value="15">Últimos 15 dias</SelectItem>
@@ -178,88 +154,51 @@ const DashboardObra = () => {
         </Select>
       </div>
 
-      {/* Financial Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-4 h-4 text-success" />
-              <span className="text-xs text-muted-foreground">Valor Imobilizado</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {valorImobilizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </p>
+            <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-success" /><span className="text-xs text-muted-foreground">Valor Imobilizado</span></div>
+            <p className="text-2xl font-bold text-foreground">{valorImobilizado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="w-4 h-4 text-destructive" />
-              <span className="text-xs text-muted-foreground">Valor Consumido</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {valorConsumido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </p>
+            <div className="flex items-center gap-2 mb-2"><TrendingDown className="w-4 h-4 text-destructive" /><span className="text-xs text-muted-foreground">Valor Consumido</span></div>
+            <p className="text-2xl font-bold text-foreground">{valorConsumido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-info" />
-              <span className="text-xs text-muted-foreground">% Consumido</span>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><Activity className="w-4 h-4 text-info" /><span className="text-xs text-muted-foreground">% Consumido</span></div>
             <p className="text-2xl font-bold text-foreground">{percentualConsumido.toFixed(1)}%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Insumos em Estoque</span>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><Package className="w-4 h-4 text-primary" /><span className="text-xs text-muted-foreground">Insumos em Estoque</span></div>
             <p className="text-2xl font-bold text-foreground">{totalInsumosCadastrados}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Operational Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <ArrowUpDown className="w-4 h-4 text-warning" />
-              <span className="text-xs text-muted-foreground">Movimentações no Período</span>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><ArrowUpDown className="w-4 h-4 text-warning" /><span className="text-xs text-muted-foreground">Movimentações no Período</span></div>
             <p className="text-2xl font-bold text-foreground">{totalMovsPeriodo}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              <span className="text-xs text-muted-foreground">Sem Movimentação ({periodDays}d)</span>
-            </div>
+            <div className="flex items-center gap-2 mb-2"><AlertTriangle className="w-4 h-4 text-destructive" /><span className="text-xs text-muted-foreground">Sem Movimentação ({periodDays}d)</span></div>
             <p className="text-2xl font-bold text-foreground">{itensSemMovimentacao.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="w-4 h-4 text-warning" />
-              <span className="text-xs text-muted-foreground">Fornecedores com Média Baixa</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{fornecedorMediaBaixa.length}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Top 5 by Value - Bar */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Top 5 Insumos por Valor</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Top 5 Insumos por Valor</CardTitle></CardHeader>
           <CardContent>
             <div className="h-64">
               {top5Valor.length > 0 ? (
@@ -272,44 +211,32 @@ const DashboardObra = () => {
                     <Bar dataKey="valor" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">Sem dados</p>
-              )}
+              ) : <p className="text-center text-muted-foreground py-8">Sem dados</p>}
             </div>
           </CardContent>
         </Card>
 
-        {/* Value Distribution - Pie */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Distribuição por Valor</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Distribuição por Valor</CardTitle></CardHeader>
           <CardContent>
             <div className="h-64">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={pieData} dataKey="valor" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name }) => name}>
-                      {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
+                      {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip formatter={(v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">Sem dados</p>
-              )}
+              ) : <p className="text-center text-muted-foreground py-8">Sem dados</p>}
             </div>
           </CardContent>
         </Card>
 
-        {/* Top 5 Most Consumed - Bar */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Top 5 Mais Consumidos</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Top 5 Mais Consumidos</CardTitle></CardHeader>
           <CardContent>
             <div className="h-64">
               {top5Consumo.length > 0 ? (
@@ -322,54 +249,27 @@ const DashboardObra = () => {
                     <Bar dataKey="quantidade" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">Sem dados</p>
-              )}
+              ) : <p className="text-center text-muted-foreground py-8">Sem dados</p>}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alerts Section */}
-      {(estoqueParado.length > 0 || fornecedorMediaBaixa.length > 0) && (
+      {estoqueParado.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              Alertas
-            </CardTitle>
+            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-destructive" />Alertas</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {estoqueParado.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">🚨 Estoque com Valor Alto Parado</h4>
-                <div className="space-y-1">
-                  {estoqueParado.map(e => (
-                    <div key={e.insumo_id} className="flex justify-between items-center p-2 bg-destructive/5 rounded-lg text-sm">
-                      <span className="text-foreground">{e.insumo?.name}</span>
-                      <Badge variant="destructive">
-                        {e.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </Badge>
-                    </div>
-                  ))}
+          <CardContent>
+            <h4 className="text-sm font-medium text-foreground mb-2">🚨 Estoque com Valor Alto Parado</h4>
+            <div className="space-y-1">
+              {estoqueParado.map(e => (
+                <div key={e.insumo_id} className="flex justify-between items-center p-2 bg-destructive/5 rounded-lg text-sm">
+                  <span className="text-foreground">{e.insumo?.name}</span>
+                  <Badge variant="destructive">{e.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Badge>
                 </div>
-              </div>
-            )}
-            {fornecedorMediaBaixa.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">⚠️ Fornecedores com Média Baixa</h4>
-                <div className="space-y-1">
-                  {fornecedorMediaBaixa.map(f => (
-                    <div key={f.forn?.id} className="flex justify-between items-center p-2 bg-warning/5 rounded-lg text-sm">
-                      <span className="text-foreground">{f.forn?.name}</span>
-                      <Badge variant="outline" className="text-warning">
-                        <Star className="w-3 h-3 mr-1" /> {f.media}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
