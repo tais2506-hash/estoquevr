@@ -308,6 +308,11 @@ const LocationsCRUD = () => {
                     {l.depth > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
                     <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="font-medium text-foreground">{l.name}</span>
+                    {l.parent_id && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({getLocationPath(l.id, true)})
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="p-3">
