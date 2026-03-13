@@ -188,6 +188,14 @@ const InsumosCRUD = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          <SpreadsheetImport
+            title="Importar Insumos"
+            columns={insumoColumns}
+            templateFileName="modelo_insumos.xlsx"
+            sheetName="Insumos"
+            templateId="insumos_v1"
+            onImport={handleSpreadsheetImport}
+          />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Insumo</Button></DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
