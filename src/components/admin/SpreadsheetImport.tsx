@@ -39,6 +39,7 @@ const SpreadsheetImport = ({
   templateFileName,
   sheetName,
   templateId,
+  existingData,
   onImport,
 }: SpreadsheetImportProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
