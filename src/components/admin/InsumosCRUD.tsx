@@ -154,7 +154,7 @@ const InsumosCRUD = () => {
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla consumo?</Label><Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla rastreabilidade?</Label><Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Material não estocável?</Label><Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} /></div>
-                  <div className="flex items-center justify-between"><Label className="text-sm">Exige vínculo com serviço?</Label><Switch checked={form.exige_servico_baixa} onCheckedChange={v => setForm({ ...form, exige_servico_baixa: v })} /></div>
+                  
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
