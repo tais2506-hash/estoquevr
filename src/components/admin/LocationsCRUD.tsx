@@ -195,12 +195,19 @@ const LocationsCRUD = () => {
     return { success, skipped, errors };
   };
 
-  const getLocationPath = (locId: string): string => {
+  const getLocationPath = (locId: string, includeObra = false): string => {
     const parts: string[] = [];
     let current = locations.find(l => l.id === locId);
     while (current) {
       parts.unshift(current.name);
       current = current.parent_id ? locations.find(l => l.id === current!.parent_id) : undefined;
+    }
+    if (includeObra) {
+      const loc = locations.find(l => l.id === locId);
+      if (loc) {
+        const obra = obras.find(o => o.id === loc.obra_id);
+        if (obra) parts.unshift(obra.name);
+      }
     }
     return parts.join(" > ");
   };
@@ -272,7 +279,7 @@ const LocationsCRUD = () => {
                   <SelectContent>
                     <SelectItem value="none">Nenhum (raiz)</SelectItem>
                     {parentOptions.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id)}</SelectItem>
+                      <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id)} ({typeLabels[l.type] || l.type})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -301,6 +308,11 @@ const LocationsCRUD = () => {
                     {l.depth > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
                     <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="font-medium text-foreground">{l.name}</span>
+                    {l.parent_id && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({getLocationPath(l.id, true)})
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="p-3">
