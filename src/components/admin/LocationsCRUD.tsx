@@ -221,6 +221,14 @@ const LocationsCRUD = () => {
             </SelectContent>
           </Select>
         </div>
+        <SpreadsheetImport
+          title="Importar Locais"
+          columns={locationColumns}
+          templateFileName="modelo_locais.xlsx"
+          sheetName="Locais"
+          templateId="locations_v1"
+          onImport={handleSpreadsheetImport}
+        />
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Local</Button>
