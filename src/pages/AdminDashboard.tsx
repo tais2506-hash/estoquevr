@@ -7,12 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
-import FornecedoresCRUD from "@/components/admin/FornecedoresCRUD";
 import KitsCRUD from "@/components/admin/KitsCRUD";
-
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
-import FVMControl from "@/components/admin/FVMControl";
-import AvaliacaoControl from "@/components/admin/AvaliacaoControl";
 import UserManagement from "@/components/admin/UserManagement";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
@@ -102,10 +98,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="obras">Obras</TabsTrigger>
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
               <TabsTrigger value="kits">Kits</TabsTrigger>
-              <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
-              <TabsTrigger value="fvm">FVM</TabsTrigger>
-              <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
@@ -117,10 +110,7 @@ const AdminDashboard = () => {
           <TabsContent value="obras"><ObrasCRUD /></TabsContent>
           <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
           <TabsContent value="kits"><KitsCRUD /></TabsContent>
-          <TabsContent value="fornecedores"><FornecedoresCRUD /></TabsContent>
           <TabsContent value="locais"><LocationsCRUD /></TabsContent>
-          <TabsContent value="fvm"><FVMControl /></TabsContent>
-          <TabsContent value="avaliacoes"><AvaliacaoControl /></TabsContent>
           <TabsContent value="usuarios"><UserManagement /></TabsContent>
         </Tabs>
       </main>
