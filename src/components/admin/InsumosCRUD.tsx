@@ -23,7 +23,7 @@ const InsumosCRUD = () => {
   const [form, setForm] = useState({
     name: "", code: "", unit: "", category: "",
     controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false,
-    material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0,
+    material_nao_estocavel: false, estoque_minimo: 0,
   });
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
