@@ -55,8 +55,7 @@ const InsumosCRUD = () => {
       name: insumo.name, code: insumo.code, unit: insumo.unit, category: insumo.category || "",
       controla_estoque: insumo.controla_estoque ?? true, controla_consumo: insumo.controla_consumo ?? true,
       controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
-      material_nao_estocavel: insumo.material_nao_estocavel ?? false,
-      exige_servico_baixa: insumo.exige_servico_baixa ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
+      material_nao_estocavel: insumo.material_nao_estocavel ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
     });
     setDialogOpen(true);
   };
