@@ -118,7 +118,6 @@ const AdminDashboard = () => {
           <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
           <TabsContent value="kits"><KitsCRUD /></TabsContent>
           <TabsContent value="fornecedores"><FornecedoresCRUD /></TabsContent>
-          <TabsContent value="eap"><ServicePackagesCRUD /></TabsContent>
           <TabsContent value="locais"><LocationsCRUD /></TabsContent>
           <TabsContent value="fvm"><FVMControl /></TabsContent>
           <TabsContent value="avaliacoes"><AvaliacaoControl /></TabsContent>

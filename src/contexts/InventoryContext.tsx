@@ -437,7 +437,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   return (
     <InventoryContext.Provider value={{
       obras, insumos, fornecedores, estoque, entradas, movimentacoes, avaliacoes, saidas,
-      kits, kitItems, servicePackages, locations, fvms, loading,
+      kits, kitItems, locations, fvms, loading,
       selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
       addEntrada, addSaida, addTransferencia, addDevolucao, addFVM, addAvaliacao, addInventarioItem,
       refetchAll,
