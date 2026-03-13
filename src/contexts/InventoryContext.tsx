@@ -89,7 +89,7 @@ interface InventoryContextType {
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
   addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; fornecedorId: string; quantity: number; unitValue: number; totalValue: number; date: string; fvmId: string; avaliacaoId: string }) => Promise<void>;
-  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; servicePackageId?: string; locationId?: string; quantidadeExecutada?: number; kitId?: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addDevolucao: (data: { obraId: string; entradaId: string; insumoId: string; fornecedorId: string; quantity: number; motivo: string; date: string }) => Promise<void>;
   addFVM: (data: { obraId: string; notaFiscal: string; fornecedorId: string; date: string; quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: string }) => Promise<string>;
