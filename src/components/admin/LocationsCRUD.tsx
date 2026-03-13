@@ -10,6 +10,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2, Search, ChevronRight, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import SpreadsheetImport from "./SpreadsheetImport";
+
+const locationColumns = [
+  { key: "name", label: "Nome", required: true, example: "Torre A" },
+  { key: "type", label: "Tipo (torre/pavimento/unidade/ambiente)", required: true, example: "torre" },
+  { key: "obra_name", label: "Nome da Obra", required: true, example: "Residencial Alpha" },
+  { key: "parent_name", label: "Local Pai (opcional)", required: false, example: "" },
+];
 
 const typeLabels: Record<string, string> = { torre: "Torre", pavimento: "Pavimento", unidade: "Unidade", ambiente: "Ambiente" };
 const typeColors: Record<string, string> = {
