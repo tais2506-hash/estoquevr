@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, ChevronRight, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronRight, ChevronDown, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import SpreadsheetImport from "./SpreadsheetImport";
@@ -34,6 +34,7 @@ const LocationsCRUD = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", type: "torre", obra_id: "", parent_id: "" });
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const activeObras = obras.filter(o => o.status !== "arquivada");
 
@@ -56,8 +57,31 @@ const LocationsCRUD = () => {
     return buildTree(null, 0);
   }, [filteredLocations, search]);
 
-  const flatTree = (nodes: any[]): any[] => nodes.flatMap(n => [n, ...flatTree(n.children || [])]);
+  const flatTree = (nodes: any[]): any[] => nodes.flatMap(n => {
+    const isCollapsed = collapsed.has(n.id);
+    return [n, ...(isCollapsed ? [] : flatTree(n.children || []))];
+  });
   const flatNodes = flatTree(tree);
+
+  const hasChildren = useCallback((id: string) => {
+    return locations.some(l => l.parent_id === id);
+  }, [locations]);
+
+  const toggleCollapse = (id: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const collapseAll = () => {
+    const ids = locations.filter(l => locations.some(c => c.parent_id === l.id)).map(l => l.id);
+    setCollapsed(new Set(ids));
+  };
+
+  const expandAll = () => setCollapsed(new Set());
 
   const resetForm = () => { setForm({ name: "", type: "torre", obra_id: "", parent_id: "" }); setEditing(null); };
 
@@ -117,19 +141,13 @@ const LocationsCRUD = () => {
     const validTypes = ["torre", "pavimento", "unidade", "ambiente"];
     const obraMap = new Map(obras.map(o => [o.name.toLowerCase().trim(), o.id]));
 
-    // Helper: resolve a path like "Obra > Torre B > 08 Oitavo" to { obraId, parentId }
     const resolvePath = (path: string, allLocs: any[]): { obraId: string; parentId: string | null } | string => {
       const parts = path.split(">").map(p => p.trim()).filter(Boolean);
       if (parts.length === 0) return "Caminho vazio";
-
-      // First part is always the obra name
       const obraName = parts[0].toLowerCase();
       const obraId = obraMap.get(obraName);
       if (!obraId) return `Obra não encontrada: "${parts[0]}"`;
-
       if (parts.length === 1) return { obraId, parentId: null };
-
-      // Walk the remaining parts to find the final parent
       let currentParentId: string | null = null;
       for (let i = 1; i < parts.length; i++) {
         const segment = parts[i].toLowerCase();
@@ -137,7 +155,6 @@ const LocationsCRUD = () => {
           (l: any) => l.name.toLowerCase().trim() === segment && l.obra_id === obraId && l.parent_id === currentParentId
         );
         if (!match) {
-          // Try without strict parent match (fallback for flat search)
           const looseMatch = allLocs.find(
             (l: any) => l.name.toLowerCase().trim() === segment && l.obra_id === obraId
           );
@@ -150,7 +167,6 @@ const LocationsCRUD = () => {
       return { obraId, parentId: currentParentId };
     };
 
-    // Separate rows: those with parent_path (need resolution) and without (root under obra)
     const rootRows: { row: Record<string, string>; idx: number; obraId: string }[] = [];
     const childRows: { row: Record<string, string>; idx: number; parentPath: string }[] = [];
 
@@ -170,7 +186,6 @@ const LocationsCRUD = () => {
         errors.push({ row: rowNum, message: "Caminho Pai é obrigatório (mínimo: nome da obra)" });
         return;
       }
-      // Check if path is just an obra name (root location)
       const parts = path.split(">").map(p => p.trim()).filter(Boolean);
       if (parts.length === 1) {
         const obraId = obraMap.get(parts[0].toLowerCase());
@@ -184,7 +199,6 @@ const LocationsCRUD = () => {
       }
     });
 
-    // Insert root rows first
     for (const { row, idx, obraId } of rootRows) {
       const { error } = await supabase.from("locations").insert({
         name: row.name,
@@ -196,10 +210,8 @@ const LocationsCRUD = () => {
       else success++;
     }
 
-    // Refresh locations for parent resolution
     const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id, parent_id").is("deleted_at", null);
 
-    // Insert child rows
     for (const { row, idx, parentPath } of childRows) {
       const result = resolvePath(parentPath, allLocs || []);
       if (typeof result === "string") {
@@ -237,6 +249,21 @@ const LocationsCRUD = () => {
     return parts.join(" > ");
   };
 
+  // Build existingData for template pre-fill
+  const existingLocationData = useMemo(() => {
+    return locations.map(l => {
+      // parent_path = full path excluding the item itself
+      const fullPath = getLocationPath(l.id, true);
+      const pathParts = fullPath.split(" > ");
+      pathParts.pop(); // remove self
+      return {
+        name: l.name,
+        type: l.type,
+        parent_path: pathParts.join(" > ") || obras.find(o => o.id === l.obra_id)?.name || "",
+      };
+    });
+  }, [locations, obras]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -253,66 +280,71 @@ const LocationsCRUD = () => {
             </SelectContent>
           </Select>
         </div>
-        <SpreadsheetImport
-          title="Importar Locais"
-          columns={locationColumns}
-          templateFileName="modelo_locais.xlsx"
-          sheetName="Locais"
-          templateId="locations_v1"
-          onImport={handleSpreadsheetImport}
-        />
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Local</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Local" : "Novo Local"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Obra</Label>
-                <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })} disabled={!!editing}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                  <SelectContent>
-                    {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={collapseAll}>Recolher</Button>
+          <Button variant="outline" size="sm" onClick={expandAll}>Expandir</Button>
+          <SpreadsheetImport
+            title="Importar Locais"
+            columns={locationColumns}
+            templateFileName="modelo_locais.xlsx"
+            sheetName="Locais"
+            templateId="locations_v1"
+            existingData={existingLocationData}
+            onImport={handleSpreadsheetImport}
+          />
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Local</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar Local" : "Novo Local"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Nome</Label>
-                  <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Torre A" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Obra</Label>
+                  <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })} disabled={!!editing}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="torre">Torre</SelectItem>
-                      <SelectItem value="pavimento">Pavimento</SelectItem>
-                      <SelectItem value="unidade">Unidade</SelectItem>
-                      <SelectItem value="ambiente">Ambiente</SelectItem>
+                      {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Torre A" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="torre">Torre</SelectItem>
+                        <SelectItem value="pavimento">Pavimento</SelectItem>
+                        <SelectItem value="unidade">Unidade</SelectItem>
+                        <SelectItem value="ambiente">Ambiente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Local Pai (opcional)</Label>
+                  <Select value={form.parent_id || "none"} onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}>
+                    <SelectTrigger><SelectValue placeholder="Nenhum (raiz)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum (raiz)</SelectItem>
+                      {parentOptions.map(l => (
+                        <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id, true)} ({typeLabels[l.type] || l.type})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
-              <div className="space-y-2">
-                <Label>Local Pai (opcional)</Label>
-                <Select value={form.parent_id || "none"} onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue placeholder="Nenhum (raiz)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum (raiz)</SelectItem>
-                    {parentOptions.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id, true)} ({typeLabels[l.type] || l.type})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -326,48 +358,58 @@ const LocationsCRUD = () => {
             </tr>
           </thead>
           <tbody>
-            {flatNodes.map(l => (
-              <tr key={l.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3">
-                  <div className="flex items-center gap-1" style={{ paddingLeft: `${l.depth * 20}px` }}>
-                    {l.depth > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{l.name}</span>
-                    {l.parent_id && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({getLocationPath(l.id, true)})
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="p-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${typeColors[l.type] || ""}`}>
-                    {typeLabels[l.type] || l.type}
-                  </span>
-                </td>
-                <td className="p-3 text-muted-foreground hidden md:table-cell">{obras.find(o => o.id === l.obra_id)?.name}</td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="w-4 h-4" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Desativar local?</AlertDialogTitle>
-                          <AlertDialogDescription>O local será desativado mas o histórico será mantido.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(l.id)}>Desativar</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {flatNodes.map(l => {
+              const hasKids = hasChildren(l.id);
+              const isCollapsed = collapsed.has(l.id);
+              return (
+                <tr key={l.id} className="border-b border-border/50 last:border-0">
+                  <td className="p-3">
+                    <div className="flex items-center gap-1" style={{ paddingLeft: `${l.depth * 20}px` }}>
+                      {hasKids ? (
+                        <button onClick={() => toggleCollapse(l.id)} className="p-0.5 rounded hover:bg-muted transition-colors">
+                          {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                        </button>
+                      ) : (
+                        <span className="w-[18px]" />
+                      )}
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{l.name}</span>
+                      {l.parent_id && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({getLocationPath(l.id, true)})
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${typeColors[l.type] || ""}`}>
+                      {typeLabels[l.type] || l.type}
+                    </span>
+                  </td>
+                  <td className="p-3 text-muted-foreground hidden md:table-cell">{obras.find(o => o.id === l.obra_id)?.name}</td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="w-4 h-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desativar local?</AlertDialogTitle>
+                            <AlertDialogDescription>O local será desativado mas o histórico será mantido.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(l.id)}>Desativar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {flatNodes.length === 0 && (
               <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum local encontrado</td></tr>
             )}
