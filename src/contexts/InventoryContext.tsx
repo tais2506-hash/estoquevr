@@ -217,15 +217,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     enabled: !!userId,
   });
 
-  const { data: servicePackages = [] } = useQuery({
-    queryKey: ["service_packages"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("service_packages").select("*").is("deleted_at", null).order("name");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!userId,
-  });
 
   const { data: locations = [] } = useQuery({
     queryKey: ["locations"],
