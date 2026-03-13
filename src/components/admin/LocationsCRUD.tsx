@@ -114,80 +114,106 @@ const LocationsCRUD = () => {
     let success = 0;
     let skipped = 0;
     const errors: { row: number; message: string }[] = [];
-
     const validTypes = ["torre", "pavimento", "unidade", "ambiente"];
-
-    // Build obra name -> id map
     const obraMap = new Map(obras.map(o => [o.name.toLowerCase().trim(), o.id]));
 
-    // We'll need to resolve parent names after inserting parents
-    // First pass: insert items without parents, then with parents
-    const withoutParent: { row: Record<string, string>; idx: number }[] = [];
-    const withParent: { row: Record<string, string>; idx: number }[] = [];
+    // Helper: resolve a path like "Obra > Torre B > 08 Oitavo" to { obraId, parentId }
+    const resolvePath = (path: string, allLocs: any[]): { obraId: string; parentId: string | null } | string => {
+      const parts = path.split(">").map(p => p.trim()).filter(Boolean);
+      if (parts.length === 0) return "Caminho vazio";
+
+      // First part is always the obra name
+      const obraName = parts[0].toLowerCase();
+      const obraId = obraMap.get(obraName);
+      if (!obraId) return `Obra não encontrada: "${parts[0]}"`;
+
+      if (parts.length === 1) return { obraId, parentId: null };
+
+      // Walk the remaining parts to find the final parent
+      let currentParentId: string | null = null;
+      for (let i = 1; i < parts.length; i++) {
+        const segment = parts[i].toLowerCase();
+        const match = allLocs.find(
+          (l: any) => l.name.toLowerCase().trim() === segment && l.obra_id === obraId && l.parent_id === currentParentId
+        );
+        if (!match) {
+          // Try without strict parent match (fallback for flat search)
+          const looseMatch = allLocs.find(
+            (l: any) => l.name.toLowerCase().trim() === segment && l.obra_id === obraId
+          );
+          if (!looseMatch) return `Local não encontrado: "${parts[i]}" na obra "${parts[0]}"`;
+          currentParentId = looseMatch.id;
+        } else {
+          currentParentId = match.id;
+        }
+      }
+      return { obraId, parentId: currentParentId };
+    };
+
+    // Separate rows: those with parent_path (need resolution) and without (root under obra)
+    const rootRows: { row: Record<string, string>; idx: number; obraId: string }[] = [];
+    const childRows: { row: Record<string, string>; idx: number; parentPath: string }[] = [];
 
     rows.forEach((row, i) => {
       const rowNum = i + 2;
-      if (!row.name || !row.type || !row.obra_name) {
-        errors.push({ row: rowNum, message: "Nome, Tipo e Nome da Obra são obrigatórios" });
+      if (!row.name || !row.type) {
+        errors.push({ row: rowNum, message: "Nome e Tipo são obrigatórios" });
         return;
       }
       const type = row.type.toLowerCase().trim();
       if (!validTypes.includes(type)) {
-        errors.push({ row: rowNum, message: `Tipo inválido: "${row.type}". Use: torre, pavimento, unidade ou ambiente` });
+        errors.push({ row: rowNum, message: `Tipo inválido: "${row.type}"` });
         return;
       }
-      const obraId = obraMap.get(row.obra_name.toLowerCase().trim());
-      if (!obraId) {
-        errors.push({ row: rowNum, message: `Obra não encontrada: "${row.obra_name}"` });
+      const path = (row.parent_path || "").trim();
+      if (!path) {
+        errors.push({ row: rowNum, message: "Caminho Pai é obrigatório (mínimo: nome da obra)" });
         return;
       }
-      if (row.parent_name && row.parent_name.trim()) {
-        withParent.push({ row, idx: rowNum });
+      // Check if path is just an obra name (root location)
+      const parts = path.split(">").map(p => p.trim()).filter(Boolean);
+      if (parts.length === 1) {
+        const obraId = obraMap.get(parts[0].toLowerCase());
+        if (!obraId) {
+          errors.push({ row: rowNum, message: `Obra não encontrada: "${parts[0]}"` });
+          return;
+        }
+        rootRows.push({ row, idx: rowNum, obraId });
       } else {
-        withoutParent.push({ row, idx: rowNum });
+        childRows.push({ row, idx: rowNum, parentPath: path });
       }
     });
 
-    // Insert items without parents first
-    for (const { row, idx } of withoutParent) {
-      const obraId = obraMap.get(row.obra_name.toLowerCase().trim())!;
+    // Insert root rows first
+    for (const { row, idx, obraId } of rootRows) {
       const { error } = await supabase.from("locations").insert({
         name: row.name,
         type: row.type.toLowerCase().trim() as any,
         obra_id: obraId,
         parent_id: null,
       } as any);
-      if (error) {
-        errors.push({ row: idx, message: error.message });
-      } else {
-        success++;
-      }
+      if (error) errors.push({ row: idx, message: error.message });
+      else success++;
     }
 
     // Refresh locations for parent resolution
-    const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id").is("deleted_at", null);
+    const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id, parent_id").is("deleted_at", null);
 
-    // Insert items with parents
-    for (const { row, idx } of withParent) {
-      const obraId = obraMap.get(row.obra_name.toLowerCase().trim())!;
-      const parent = (allLocs || []).find(
-        l => l.name.toLowerCase().trim() === row.parent_name.toLowerCase().trim() && l.obra_id === obraId
-      );
-      if (!parent) {
-        errors.push({ row: idx, message: `Local pai não encontrado: "${row.parent_name}"` });
+    // Insert child rows
+    for (const { row, idx, parentPath } of childRows) {
+      const result = resolvePath(parentPath, allLocs || []);
+      if (typeof result === "string") {
+        errors.push({ row: idx, message: result });
         continue;
       }
       const { error } = await supabase.from("locations").insert({
         name: row.name,
         type: row.type.toLowerCase().trim() as any,
-        obra_id: obraId,
-        parent_id: parent.id,
+        obra_id: result.obraId,
+        parent_id: result.parentId,
       } as any);
-      if (error) {
-        errors.push({ row: idx, message: error.message });
-      } else {
-        success++;
-      }
+      if (error) errors.push({ row: idx, message: error.message });
+      else success++;
     }
 
     queryClient.invalidateQueries({ queryKey: ["locations"] });
