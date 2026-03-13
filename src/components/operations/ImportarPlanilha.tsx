@@ -1,179 +1,250 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle, Loader2, Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
 
 interface ImportResult {
-  success: boolean;
-  rows_parsed: number;
-  insumos_created: number;
-  insumos_existing: number;
-  fornecedores_created: number;
-  fornecedores_existing: number;
-  stock_items_updated: number;
+  total: number;
+  imported: number;
+  skipped: number;
+  errors: string[];
 }
 
 const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId } = useInventory();
+  const { selectedObraId, insumos, obras, refetchAll } = useInventory();
+  const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const [progress, setProgress] = useState("");
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [fornecedores, setFornecedores] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadFornecedores = async () => {
+      const { data } = await supabase.from("fornecedores").select("*").is("deleted_at", null).order("name");
+      if (data) setFornecedores(data);
+    };
+    loadFornecedores();
+  }, []);
+
+  const selectedObra = obras.find(o => o.id === selectedObraId);
+
+  const downloadTemplate = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Main sheet with headers and instructions
+    const headers = ["Código Insumo", "Nome Insumo", "Unidade", "Nota Fiscal", "CNPJ Fornecedor", "Nome Fornecedor", "Quantidade", "Valor Unitário", "Data (DD/MM/AAAA)"];
+    const wsData = [headers];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 18 },
+      { wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 18 },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Entradas");
+
+    // Insumos reference sheet (read-only data)
+    const insumosData = [["Código", "Nome", "Unidade", "Categoria"]];
+    insumos.forEach(i => {
+      insumosData.push([i.code, i.name, i.unit, i.category]);
+    });
+    const wsInsumos = XLSX.utils.aoa_to_sheet(insumosData);
+    wsInsumos["!cols"] = [{ wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, wsInsumos, "Insumos Cadastrados");
+
+    // Fornecedores reference sheet
+    const fornData = [["CNPJ", "Nome", "Contato"]];
+    fornecedores.forEach(f => {
+      fornData.push([f.cnpj, f.name, f.contact || ""]);
+    });
+    const wsForn = XLSX.utils.aoa_to_sheet(fornData);
+    wsForn["!cols"] = [{ wch: 20 }, { wch: 35 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, wsForn, "Fornecedores Cadastrados");
+
+    const fileName = `modelo_entrada_estoque_${selectedObra?.name || "obra"}.xlsx`.replace(/\s+/g, "_");
+    XLSX.writeFile(wb, fileName);
+    toast.success("Modelo baixado com sucesso!");
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) setFile(f);
+    if (f) {
+      setFile(f);
+      setValidationErrors([]);
+    }
   };
 
   const processFile = async () => {
-    if (!file || !selectedObraId) return;
+    if (!file || !selectedObraId || !user) return;
     setIsProcessing(true);
-    setProgress("Lendo arquivo...");
+    setValidationErrors([]);
 
     try {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const sheet = workbook.Sheets["Entradas"] || workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-      setProgress("Processando dados...");
-
-      // Find header row (contains "Cód. Item" or "Descrição")
-      let headerIdx = -1;
-      for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-        const row = jsonData[i];
-        if (row && row.some((c: any) => String(c).includes("Cód. Item") || String(c).includes("Cód. Estruturado"))) {
-          headerIdx = i;
-          break;
-        }
-      }
-
-      if (headerIdx === -1) {
-        toast.error("Formato de planilha não reconhecido");
+      if (jsonData.length < 2) {
+        toast.error("Planilha vazia ou sem dados");
         setIsProcessing(false);
         return;
       }
 
-      // Map column indices
-      const headers = jsonData[headerIdx].map((h: any) => String(h || "").trim());
-      const colMap = {
-        servicoDesc: headers.indexOf("Descrição"),
-        insumoCode: headers.lastIndexOf("Cód. Item") > headers.indexOf("Cód. Item") 
-          ? headers.indexOf("Cód. Item") 
-          : headers.findIndex((h: string) => h === "Cód. Item"),
-        insumoName: -1,
-        unit: headers.indexOf("Unidade"),
-        notaFiscal: headers.indexOf("Documento"),
-        date: headers.indexOf("Data Documento"),
-        quantity: headers.indexOf("Qtde. Apropriada"),
-        unitValue: headers.indexOf("Valor Unitário"),
-        totalValue: headers.indexOf("Valor Apropriação"),
-        fornecedorCode: headers.indexOf("Cód. Fornecedor"),
-        fornecedorName: headers.indexOf("Fornecedor"),
-      };
+      // Build lookup maps
+      const insumoByCode = new Map(insumos.map(i => [i.code.trim().toLowerCase(), i]));
+      const fornByName = new Map(fornecedores.map(f => [f.name.trim().toLowerCase(), f]));
+      const fornByCnpj = new Map(fornecedores.map(f => [f.cnpj.replace(/\D/g, ""), f]));
 
-      // Find the Descrição columns - there are multiple, we need the insumo one (2nd)
-      const descIndices = headers.reduce((acc: number[], h: string, i: number) => {
-        if (h === "Descrição") acc.push(i);
-        return acc;
-      }, []);
+      const errors: string[] = [];
+      const validRows: {
+        insumo: any; fornecedor: any; notaFiscal: string;
+        quantity: number; unitValue: number; totalValue: number; date: string;
+      }[] = [];
 
-      // Insumo code is the first "Cód. Item" after the service codes
-      // Looking at the structure: Serviço(3 cols) | Insumo(3 cols) | Realizado(3 cols) | Apropriação(4 cols) | ...
-      // Service: Cód. Estruturado, Cód. Alternativo, Descrição
-      // Insumo: Cód. Item, Cód. Alternativo, Descrição
-      const codItemIndices = headers.reduce((acc: number[], h: string, i: number) => {
-        if (h === "Cód. Item") acc.push(i);
-        return acc;
-      }, []);
-
-      // First Cód. Item is for Insumo (index 3 typically)
-      const insumoCodeIdx = codItemIndices[0] ?? 3;
-      // The Descrição right after insumo code
-      const insumoNameIdx = descIndices.length > 1 ? descIndices[1] : insumoCodeIdx + 2;
-      const servicoDescIdx = descIndices[0] ?? 2;
-
-      setProgress("Extraindo dados da planilha...");
-
-      // Build rows for the edge function  
-      const rows: any[] = [];
-      for (let i = headerIdx + 1; i < jsonData.length; i++) {
+      for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
-        if (!row || !row[insumoCodeIdx]) continue;
+        if (!row || !row[0]) continue;
 
-        const insumoCode = String(row[insumoCodeIdx] || "").trim();
-        if (!insumoCode || insumoCode === "") continue;
+        const lineNum = i + 1;
+        const insumoCode = String(row[0] || "").trim().toLowerCase();
+        const notaFiscal = String(row[3] || "").trim();
+        const cnpjRaw = String(row[4] || "").replace(/\D/g, "");
+        const fornNome = String(row[5] || "").trim().toLowerCase();
+        const quantity = parseFloat(String(row[6] || "0").replace(/,/g, ".")) || 0;
+        const unitValue = parseFloat(String(row[7] || "0").replace(/,/g, ".")) || 0;
+        const dateRaw = row[8];
 
-        rows.push({
-          insumo_code: insumoCode,
-          insumo_name: String(row[insumoNameIdx] || "").trim(),
-          unit: String(row[colMap.unit] || "").trim(),
-          category: String(row[servicoDescIdx] || "").trim(),
-          fornecedor_code: String(row[colMap.fornecedorCode] || "").trim(),
-          fornecedor_name: String(row[colMap.fornecedorName] || "").trim(),
-          nota_fiscal: String(row[colMap.notaFiscal] || "").trim(),
-          date: row[colMap.date] || "",
-          quantity: parseFloat(String(row[colMap.quantity] || "0").replace(/,/g, "")) || 0,
-          unit_value: parseFloat(String(row[colMap.unitValue] || "0").replace(/,/g, "")) || 0,
-          total_value: parseFloat(String(row[colMap.totalValue] || "0").replace(/,/g, "")) || 0,
+        // Validate insumo
+        const insumo = insumoByCode.get(insumoCode);
+        if (!insumo) {
+          errors.push(`Linha ${lineNum}: Insumo "${row[0]}" não cadastrado no sistema`);
+          continue;
+        }
+
+        // Validate fornecedor
+        let fornecedor = fornByCnpj.get(cnpjRaw) || fornByName.get(fornNome);
+        if (!fornecedor) {
+          errors.push(`Linha ${lineNum}: Fornecedor "${row[5] || row[4]}" não cadastrado no sistema`);
+          continue;
+        }
+
+        if (!notaFiscal) {
+          errors.push(`Linha ${lineNum}: Nota Fiscal obrigatória`);
+          continue;
+        }
+        if (quantity <= 0) {
+          errors.push(`Linha ${lineNum}: Quantidade deve ser maior que zero`);
+          continue;
+        }
+        if (unitValue <= 0) {
+          errors.push(`Linha ${lineNum}: Valor unitário deve ser maior que zero`);
+          continue;
+        }
+
+        // Parse date
+        let dateStr = "";
+        if (typeof dateRaw === "number") {
+          const d = XLSX.SSF.parse_date_code(dateRaw);
+          dateStr = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+        } else if (dateRaw) {
+          const parts = String(dateRaw).split("/");
+          if (parts.length === 3) {
+            dateStr = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+          }
+        }
+        if (!dateStr) dateStr = new Date().toISOString().split("T")[0];
+
+        validRows.push({
+          insumo, fornecedor, notaFiscal,
+          quantity, unitValue, totalValue: quantity * unitValue, date: dateStr,
         });
       }
 
-      if (rows.length === 0) {
-        toast.error("Nenhum dado encontrado na planilha");
+      if (errors.length > 0 && validRows.length === 0) {
+        setValidationErrors(errors);
+        toast.error("Nenhuma linha válida encontrada");
         setIsProcessing(false);
         return;
       }
 
-      setProgress(`Importando ${rows.length} registros...`);
+      // Import valid rows
+      let imported = 0;
+      const importErrors: string[] = [...errors];
 
-      // Send to edge function in chunks
-      const chunkSize = 2000;
-      let totalResult: ImportResult = {
-        success: true,
-        rows_parsed: 0,
-        insumos_created: 0,
-        insumos_existing: 0,
-        fornecedores_created: 0,
-        fornecedores_existing: 0,
-        stock_items_updated: 0,
-      };
+      for (const row of validRows) {
+        try {
+          // Insert entrada
+          const { data: inserted, error: insertErr } = await supabase.from("entradas").insert({
+            obra_id: selectedObraId,
+            insumo_id: row.insumo.id,
+            nota_fiscal: row.notaFiscal,
+            fornecedor_id: row.fornecedor.id,
+            quantity: row.quantity,
+            unit_value: row.unitValue,
+            total_value: row.totalValue,
+            date: row.date,
+            user_id: user.id,
+          }).select().single();
 
-      for (let i = 0; i < rows.length; i += chunkSize) {
-        const chunk = rows.slice(i, i + chunkSize);
-        setProgress(`Enviando lote ${Math.floor(i / chunkSize) + 1}/${Math.ceil(rows.length / chunkSize)}...`);
+          if (insertErr) throw insertErr;
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
+          // Update estoque
+          if (!row.insumo.material_nao_estocavel) {
+            const { data: existing } = await supabase
+              .from("estoque").select("*")
+              .eq("obra_id", selectedObraId).eq("insumo_id", row.insumo.id).single();
 
-        const response = await supabase.functions.invoke("import-spreadsheet", {
-          body: { rows: chunk, obra_id: selectedObraId },
-        });
+            if (existing) {
+              const newQty = existing.quantity + row.quantity;
+              const newTotal = existing.total_value + row.totalValue;
+              const newAvg = newQty > 0 ? newTotal / newQty : 0;
+              await supabase.from("estoque").update({
+                quantity: newQty, total_value: newTotal, average_unit_cost: newAvg,
+              }).eq("id", existing.id);
+            } else {
+              await supabase.from("estoque").insert({
+                obra_id: selectedObraId, insumo_id: row.insumo.id,
+                quantity: row.quantity, total_value: row.totalValue,
+                average_unit_cost: row.unitValue,
+              });
+            }
+          }
 
-        if (response.error) {
-          throw new Error(response.error.message);
+          // Insert movimentacao
+          await supabase.from("movimentacoes").insert({
+            obra_id: selectedObraId, insumo_id: row.insumo.id,
+            type: "entrada" as any, quantity: row.quantity, date: row.date,
+            description: `Entrada NF ${row.notaFiscal} (planilha)`,
+            reference_id: inserted.id, user_id: user.id,
+          });
+
+          imported++;
+        } catch (err: any) {
+          importErrors.push(`Erro ao importar ${row.insumo.name}: ${err.message}`);
         }
-
-        const chunkResult = response.data as ImportResult;
-        totalResult.rows_parsed += chunkResult.rows_parsed || 0;
-        totalResult.insumos_created += chunkResult.insumos_created || 0;
-        totalResult.insumos_existing += chunkResult.insumos_existing || 0;
-        totalResult.fornecedores_created += chunkResult.fornecedores_created || 0;
-        totalResult.fornecedores_existing += chunkResult.fornecedores_existing || 0;
-        totalResult.stock_items_updated += chunkResult.stock_items_updated || 0;
       }
 
-      setResult(totalResult);
-      toast.success("Importação concluída!");
+      refetchAll();
+      setResult({
+        total: validRows.length + errors.length,
+        imported,
+        skipped: errors.length,
+        errors: importErrors,
+      });
+      toast.success(`${imported} entradas importadas com sucesso!`);
     } catch (err: any) {
       console.error("Import error:", err);
       toast.error(`Erro na importação: ${err.message}`);
     } finally {
       setIsProcessing(false);
-      setProgress("");
     }
   };
 
@@ -185,12 +256,21 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         </div>
         <h2 className="text-xl font-bold text-foreground mb-4">Importação Concluída!</h2>
         <div className="bg-card rounded-xl border border-border p-6 max-w-md mx-auto text-left space-y-2">
-          <p className="text-sm"><span className="text-muted-foreground">Linhas processadas:</span> <strong>{result.rows_parsed}</strong></p>
-          <p className="text-sm"><span className="text-muted-foreground">Insumos criados:</span> <strong>{result.insumos_created}</strong></p>
-          <p className="text-sm"><span className="text-muted-foreground">Insumos já existentes:</span> <strong>{result.insumos_existing}</strong></p>
-          <p className="text-sm"><span className="text-muted-foreground">Fornecedores criados:</span> <strong>{result.fornecedores_created}</strong></p>
-          <p className="text-sm"><span className="text-muted-foreground">Fornecedores já existentes:</span> <strong>{result.fornecedores_existing}</strong></p>
-          <p className="text-sm"><span className="text-muted-foreground">Itens de estoque atualizados:</span> <strong>{result.stock_items_updated}</strong></p>
+          <p className="text-sm"><span className="text-muted-foreground">Total de linhas:</span> <strong>{result.total}</strong></p>
+          <p className="text-sm"><span className="text-muted-foreground">Entradas importadas:</span> <strong className="text-success">{result.imported}</strong></p>
+          {result.skipped > 0 && (
+            <p className="text-sm"><span className="text-muted-foreground">Linhas ignoradas:</span> <strong className="text-warning">{result.skipped}</strong></p>
+          )}
+          {result.errors.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <p className="text-xs font-semibold text-destructive mb-2">Detalhes dos erros:</p>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {result.errors.map((e, i) => (
+                  <p key={i} className="text-xs text-muted-foreground">{e}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={onBack}>Voltar ao Menu</Button>
@@ -205,50 +285,78 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="w-4 h-4" /> Voltar ao Menu
       </button>
-      <h2 className="text-xl font-bold text-foreground mb-6">Importar Planilha</h2>
+      <h2 className="text-xl font-bold text-foreground mb-6">Importar Planilha de Estoque</h2>
 
       <div className="bg-card rounded-xl border border-border p-6 max-w-lg space-y-6">
-        <div className="text-sm text-muted-foreground space-y-2">
-          <p>Selecione um arquivo Excel (.xlsx) com o GRD Realizado.</p>
-          <p>O sistema irá extrair automaticamente:</p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Insumos (código, nome, unidade, categoria)</li>
-            <li>Fornecedores (código, nome)</li>
-            <li>Estoque agregado por insumo</li>
-          </ul>
+        {/* Step 1: Download template */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">1. Baixe o modelo</h3>
+          <p className="text-xs text-muted-foreground">
+            O modelo vem com as abas de referência contendo todos os insumos e fornecedores já cadastrados.
+            Use os códigos e CNPJs dessas abas para preencher a aba "Entradas".
+          </p>
+          <Button variant="outline" onClick={downloadTemplate} className="w-full gap-2">
+            <Download className="w-4 h-4" />
+            Baixar Modelo ({insumos.length} insumos, {fornecedores.length} fornecedores)
+          </Button>
         </div>
 
-        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-          {file ? (
-            <div className="flex items-center gap-3 justify-center">
-              <FileSpreadsheet className="w-8 h-8 text-success" />
-              <div className="text-left">
-                <p className="font-medium text-foreground">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+        {/* Step 2: Upload */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">2. Preencha e envie</h3>
+          <p className="text-xs text-muted-foreground">
+            Somente insumos e fornecedores já cadastrados serão aceitos. Linhas com dados não encontrados serão ignoradas.
+          </p>
+
+          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+            {file ? (
+              <div className="flex items-center gap-3 justify-center">
+                <FileSpreadsheet className="w-8 h-8 text-success" />
+                <div className="text-left">
+                  <p className="font-medium text-foreground">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <label className="cursor-pointer space-y-2 block">
-              <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">Clique para selecionar o arquivo</p>
-              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden" />
-            </label>
-          )}
+            ) : (
+              <label className="cursor-pointer space-y-2 block">
+                <Upload className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">Clique para selecionar o arquivo</p>
+                <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" />
+              </label>
+            )}
+          </div>
         </div>
+
+        {/* Validation errors */}
+        {validationErrors.length > 0 && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-destructive text-sm font-semibold">
+              <AlertTriangle className="w-4 h-4" />
+              Erros de validação
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {validationErrors.map((e, i) => (
+                <p key={i} className="text-xs text-muted-foreground">{e}</p>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isProcessing && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{progress}</span>
+            <span>Processando e validando dados...</span>
           </div>
         )}
 
         <div className="flex gap-3">
           {file && !isProcessing && (
-            <Button onClick={() => setFile(null)} variant="outline" className="flex-1">Trocar Arquivo</Button>
+            <Button onClick={() => { setFile(null); setValidationErrors([]); }} variant="outline" className="flex-1">
+              Trocar Arquivo
+            </Button>
           )}
           <Button onClick={processFile} disabled={!file || isProcessing} className="flex-1">
-            {isProcessing ? "Processando..." : "Importar Dados"}
+            {isProcessing ? "Processando..." : "Importar Entradas"}
           </Button>
         </div>
       </div>
