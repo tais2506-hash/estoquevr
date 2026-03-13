@@ -9,7 +9,7 @@ import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
 import FornecedoresCRUD from "@/components/admin/FornecedoresCRUD";
 import KitsCRUD from "@/components/admin/KitsCRUD";
-import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
+
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import FVMControl from "@/components/admin/FVMControl";
 import AvaliacaoControl from "@/components/admin/AvaliacaoControl";
