@@ -13,6 +13,15 @@ import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import SpreadsheetImport from "./SpreadsheetImport";
+
+const insumoColumns = [
+  { key: "code", label: "Código", required: true, example: "INS-001" },
+  { key: "name", label: "Nome", required: true, example: "Cimento CP-II" },
+  { key: "unit", label: "Unidade", required: true, example: "kg" },
+  { key: "category", label: "Categoria", required: false, example: "Estrutural" },
+  { key: "estoque_minimo", label: "Estoque Mínimo", required: false, example: "100" },
+];
 
 const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
@@ -108,6 +117,51 @@ const InsumosCRUD = () => {
     setSelected(prev => prev.length === ids.length ? [] : ids);
   };
 
+  const handleSpreadsheetImport = async (rows: Record<string, string>[]) => {
+    let success = 0;
+    let skipped = 0;
+    const errors: { row: number; message: string }[] = [];
+
+    // Get existing codes
+    const { data: existing } = await supabase.from("insumos").select("code");
+    const existingCodes = new Set((existing || []).map(e => e.code));
+
+    const toInsert: any[] = [];
+    rows.forEach((row, i) => {
+      const rowNum = i + 2; // header=1, example=2, data starts at 3 but we skip example
+      if (!row.code || !row.name || !row.unit) {
+        errors.push({ row: rowNum, message: "Código, Nome e Unidade são obrigatórios" });
+        return;
+      }
+      if (existingCodes.has(row.code)) {
+        skipped++;
+        return;
+      }
+      existingCodes.add(row.code);
+      toInsert.push({
+        code: row.code,
+        name: row.name,
+        unit: row.unit,
+        category: row.category || "",
+        estoque_minimo: parseFloat(row.estoque_minimo) || 0,
+      });
+    });
+
+    // Batch insert
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const batch = toInsert.slice(i, i + 500);
+      const { error } = await supabase.from("insumos").insert(batch as any);
+      if (error) {
+        errors.push({ row: 0, message: `Erro no lote: ${error.message}` });
+      } else {
+        success += batch.length;
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["insumos"] });
+    return { success, skipped, errors };
+  };
+
   const getStockAlert = (insumoId: string) => {
     const ins = insumos.find(i => i.id === insumoId);
     if (!ins || !ins.estoque_minimo || ins.estoque_minimo <= 0) return false;
@@ -134,6 +188,14 @@ const InsumosCRUD = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          <SpreadsheetImport
+            title="Importar Insumos"
+            columns={insumoColumns}
+            templateFileName="modelo_insumos.xlsx"
+            sheetName="Insumos"
+            templateId="insumos_v1"
+            onImport={handleSpreadsheetImport}
+          />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Insumo</Button></DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

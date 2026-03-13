@@ -10,6 +10,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2, Search, ChevronRight, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import SpreadsheetImport from "./SpreadsheetImport";
+
+const locationColumns = [
+  { key: "name", label: "Nome", required: true, example: "Torre A" },
+  { key: "type", label: "Tipo (torre/pavimento/unidade/ambiente)", required: true, example: "torre" },
+  { key: "obra_name", label: "Nome da Obra", required: true, example: "Residencial Alpha" },
+  { key: "parent_name", label: "Local Pai (opcional)", required: false, example: "" },
+];
 
 const typeLabels: Record<string, string> = { torre: "Torre", pavimento: "Pavimento", unidade: "Unidade", ambiente: "Ambiente" };
 const typeColors: Record<string, string> = {
@@ -103,6 +111,90 @@ const LocationsCRUD = () => {
     }
   };
 
+  const handleSpreadsheetImport = async (rows: Record<string, string>[]) => {
+    let success = 0;
+    let skipped = 0;
+    const errors: { row: number; message: string }[] = [];
+
+    const validTypes = ["torre", "pavimento", "unidade", "ambiente"];
+
+    // Build obra name -> id map
+    const obraMap = new Map(obras.map(o => [o.name.toLowerCase().trim(), o.id]));
+
+    // We'll need to resolve parent names after inserting parents
+    // First pass: insert items without parents, then with parents
+    const withoutParent: { row: Record<string, string>; idx: number }[] = [];
+    const withParent: { row: Record<string, string>; idx: number }[] = [];
+
+    rows.forEach((row, i) => {
+      const rowNum = i + 2;
+      if (!row.name || !row.type || !row.obra_name) {
+        errors.push({ row: rowNum, message: "Nome, Tipo e Nome da Obra são obrigatórios" });
+        return;
+      }
+      const type = row.type.toLowerCase().trim();
+      if (!validTypes.includes(type)) {
+        errors.push({ row: rowNum, message: `Tipo inválido: "${row.type}". Use: torre, pavimento, unidade ou ambiente` });
+        return;
+      }
+      const obraId = obraMap.get(row.obra_name.toLowerCase().trim());
+      if (!obraId) {
+        errors.push({ row: rowNum, message: `Obra não encontrada: "${row.obra_name}"` });
+        return;
+      }
+      if (row.parent_name && row.parent_name.trim()) {
+        withParent.push({ row, idx: rowNum });
+      } else {
+        withoutParent.push({ row, idx: rowNum });
+      }
+    });
+
+    // Insert items without parents first
+    for (const { row, idx } of withoutParent) {
+      const obraId = obraMap.get(row.obra_name.toLowerCase().trim())!;
+      const { error } = await supabase.from("locations").insert({
+        name: row.name,
+        type: row.type.toLowerCase().trim() as any,
+        obra_id: obraId,
+        parent_id: null,
+      } as any);
+      if (error) {
+        errors.push({ row: idx, message: error.message });
+      } else {
+        success++;
+      }
+    }
+
+    // Refresh locations for parent resolution
+    const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id").is("deleted_at", null);
+
+    // Insert items with parents
+    for (const { row, idx } of withParent) {
+      const obraId = obraMap.get(row.obra_name.toLowerCase().trim())!;
+      const parent = (allLocs || []).find(
+        l => l.name.toLowerCase().trim() === row.parent_name.toLowerCase().trim() && l.obra_id === obraId
+      );
+      if (!parent) {
+        errors.push({ row: idx, message: `Local pai não encontrado: "${row.parent_name}"` });
+        continue;
+      }
+      const { error } = await supabase.from("locations").insert({
+        name: row.name,
+        type: row.type.toLowerCase().trim() as any,
+        obra_id: obraId,
+        parent_id: parent.id,
+      } as any);
+      if (error) {
+        errors.push({ row: idx, message: error.message });
+      } else {
+        success++;
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["locations"] });
+    return { success, skipped, errors };
+  };
+
   const getLocationPath = (locId: string): string => {
     const parts: string[] = [];
     let current = locations.find(l => l.id === locId);
@@ -129,6 +221,14 @@ const LocationsCRUD = () => {
             </SelectContent>
           </Select>
         </div>
+        <SpreadsheetImport
+          title="Importar Locais"
+          columns={locationColumns}
+          templateFileName="modelo_locais.xlsx"
+          sheetName="Locais"
+          templateId="locations_v1"
+          onImport={handleSpreadsheetImport}
+        />
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-2" />Novo Local</Button>
