@@ -9,7 +9,7 @@ import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
 import FornecedoresCRUD from "@/components/admin/FornecedoresCRUD";
 import KitsCRUD from "@/components/admin/KitsCRUD";
-import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
+
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import FVMControl from "@/components/admin/FVMControl";
 import AvaliacaoControl from "@/components/admin/AvaliacaoControl";
@@ -103,7 +103,6 @@ const AdminDashboard = () => {
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
               <TabsTrigger value="kits">Kits</TabsTrigger>
               <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
-              <TabsTrigger value="eap">EAP</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
               <TabsTrigger value="fvm">FVM</TabsTrigger>
               <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
@@ -119,7 +118,6 @@ const AdminDashboard = () => {
           <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
           <TabsContent value="kits"><KitsCRUD /></TabsContent>
           <TabsContent value="fornecedores"><FornecedoresCRUD /></TabsContent>
-          <TabsContent value="eap"><ServicePackagesCRUD /></TabsContent>
           <TabsContent value="locais"><LocationsCRUD /></TabsContent>
           <TabsContent value="fvm"><FVMControl /></TabsContent>
           <TabsContent value="avaliacoes"><AvaliacaoControl /></TabsContent>

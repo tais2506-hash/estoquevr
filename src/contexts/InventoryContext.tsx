@@ -53,10 +53,6 @@ type KitRow = {
 type KitItemRow = {
   id: string; kit_id: string; insumo_id: string; quantity: number; created_at: string;
 };
-type ServicePackageRow = {
-  id: string; obra_id: string; name: string; eap_code: string; unit: string; status: string;
-  deleted_at: string | null; created_at: string; updated_at: string;
-};
 type LocationRow = {
   id: string; obra_id: string; parent_id: string | null; name: string;
   type: string; status: string;
@@ -82,7 +78,7 @@ interface InventoryContextType {
   saidas: SaidaRow[];
   kits: KitRow[];
   kitItems: KitItemRow[];
-  servicePackages: ServicePackageRow[];
+  
   locations: LocationRow[];
   fvms: FVMRow[];
   loading: boolean;
@@ -93,7 +89,7 @@ interface InventoryContextType {
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
   addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; fornecedorId: string; quantity: number; unitValue: number; totalValue: number; date: string; fvmId: string; avaliacaoId: string }) => Promise<void>;
-  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; servicePackageId?: string; locationId?: string; quantidadeExecutada?: number; kitId?: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addDevolucao: (data: { obraId: string; entradaId: string; insumoId: string; fornecedorId: string; quantity: number; motivo: string; date: string }) => Promise<void>;
   addFVM: (data: { obraId: string; notaFiscal: string; fornecedorId: string; date: string; quantidadeConferida: boolean; qualidadeMaterial: boolean; documentacaoOk: boolean; observacoes: string; status: string }) => Promise<string>;
@@ -221,15 +217,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     enabled: !!userId,
   });
 
-  const { data: servicePackages = [] } = useQuery({
-    queryKey: ["service_packages"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("service_packages").select("*").is("deleted_at", null).order("name");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!userId,
-  });
 
   const { data: locations = [] } = useQuery({
     queryKey: ["locations"],
@@ -270,7 +257,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["saidas"] });
     queryClient.invalidateQueries({ queryKey: ["kits"] });
     queryClient.invalidateQueries({ queryKey: ["kit_items"] });
-    queryClient.invalidateQueries({ queryKey: ["service_packages"] });
+    
     queryClient.invalidateQueries({ queryKey: ["locations"] });
     queryClient.invalidateQueries({ queryKey: ["fvms"] });
   }, [queryClient]);
@@ -344,7 +331,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, insumos, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
-  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; servicePackageId?: string; locationId?: string; quantidadeExecutada?: number; kitId?: string }) => {
+  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => {
     if (!userId) return;
     const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
     const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
@@ -353,9 +340,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       obra_id: data.obraId, insumo_id: data.insumoId, quantity: data.quantity,
       date: data.date, local_aplicacao: data.localAplicacao, responsavel: data.responsavel,
       user_id: userId,
-      service_package_id: data.servicePackageId || null,
       location_id: data.locationId || null,
-      quantidade_executada: data.quantidadeExecutada || null,
       kit_id: data.kitId || null,
     } as any).select().single();
     if (error) throw error;
@@ -452,7 +437,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   return (
     <InventoryContext.Provider value={{
       obras, insumos, fornecedores, estoque, entradas, movimentacoes, avaliacoes, saidas,
-      kits, kitItems, servicePackages, locations, fvms, loading,
+      kits, kitItems, locations, fvms, loading,
       selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
       addEntrada, addSaida, addTransferencia, addDevolucao, addFVM, addAvaliacao, addInventarioItem,
       refetchAll,

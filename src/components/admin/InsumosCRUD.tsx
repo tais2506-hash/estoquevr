@@ -23,7 +23,7 @@ const InsumosCRUD = () => {
   const [form, setForm] = useState({
     name: "", code: "", unit: "", category: "",
     controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false,
-    material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0,
+    material_nao_estocavel: false, estoque_minimo: 0,
   });
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -42,7 +42,7 @@ const InsumosCRUD = () => {
   });
 
   const resetForm = () => {
-    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, exige_servico_baixa: false, estoque_minimo: 0 });
+    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, estoque_minimo: 0 });
     setEditing(null);
   };
 
@@ -55,8 +55,7 @@ const InsumosCRUD = () => {
       name: insumo.name, code: insumo.code, unit: insumo.unit, category: insumo.category || "",
       controla_estoque: insumo.controla_estoque ?? true, controla_consumo: insumo.controla_consumo ?? true,
       controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
-      material_nao_estocavel: insumo.material_nao_estocavel ?? false,
-      exige_servico_baixa: insumo.exige_servico_baixa ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
+      material_nao_estocavel: insumo.material_nao_estocavel ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
     });
     setDialogOpen(true);
   };
@@ -68,7 +67,7 @@ const InsumosCRUD = () => {
         name: form.name, code: form.code, unit: form.unit, category: form.category,
         controla_estoque: form.controla_estoque, controla_consumo: form.controla_consumo,
         controla_rastreabilidade: form.controla_rastreabilidade, material_nao_estocavel: form.material_nao_estocavel,
-        exige_servico_baixa: form.exige_servico_baixa, estoque_minimo: form.estoque_minimo,
+        estoque_minimo: form.estoque_minimo,
       };
       if (editing) {
         const { error } = await supabase.from("insumos").update(payload as any).eq("id", editing.id);
@@ -155,7 +154,7 @@ const InsumosCRUD = () => {
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla consumo?</Label><Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla rastreabilidade?</Label><Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Material não estocável?</Label><Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} /></div>
-                  <div className="flex items-center justify-between"><Label className="text-sm">Exige vínculo com serviço?</Label><Switch checked={form.exige_servico_baixa} onCheckedChange={v => setForm({ ...form, exige_servico_baixa: v })} /></div>
+                  
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
@@ -208,7 +207,7 @@ const InsumosCRUD = () => {
                     <div className="flex flex-wrap gap-1">
                       {(i as any).material_nao_estocavel && <Badge variant="outline" className="text-xs">N.Est</Badge>}
                       {(i as any).controla_rastreabilidade && <Badge variant="outline" className="text-xs">Rast</Badge>}
-                      {(i as any).exige_servico_baixa && <Badge variant="outline" className="text-xs">Svc</Badge>}
+                      
                       {(i as any).estoque_minimo > 0 && <Badge variant="outline" className="text-xs">Min:{(i as any).estoque_minimo}</Badge>}
                     </div>
                   </td>
