@@ -51,10 +51,19 @@ const SpreadsheetImport = ({
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
 
-    // Data sheet with headers + example row
+    // Data sheet with headers + example row + existing data
     const headers = columns.map((c) => c.label);
     const examples = columns.map((c) => c.example);
-    const ws = XLSX.utils.aoa_to_sheet([headers, examples]);
+    const dataRows: string[][] = [headers, examples];
+
+    // Add existing data rows
+    if (existingData && existingData.length > 0) {
+      existingData.forEach((row) => {
+        dataRows.push(columns.map((c) => row[c.key] || ""));
+      });
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(dataRows);
 
     // Set column widths
     ws["!cols"] = columns.map((c) => ({ wch: Math.max(c.label.length, c.example.length, 15) }));
