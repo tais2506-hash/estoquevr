@@ -78,7 +78,7 @@ interface InventoryContextType {
   saidas: SaidaRow[];
   kits: KitRow[];
   kitItems: KitItemRow[];
-  servicePackages: ServicePackageRow[];
+  
   locations: LocationRow[];
   fvms: FVMRow[];
   loading: boolean;
