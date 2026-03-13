@@ -257,7 +257,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["saidas"] });
     queryClient.invalidateQueries({ queryKey: ["kits"] });
     queryClient.invalidateQueries({ queryKey: ["kit_items"] });
-    queryClient.invalidateQueries({ queryKey: ["service_packages"] });
+    
     queryClient.invalidateQueries({ queryKey: ["locations"] });
     queryClient.invalidateQueries({ queryKey: ["fvms"] });
   }, [queryClient]);
