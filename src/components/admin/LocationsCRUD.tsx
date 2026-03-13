@@ -13,10 +13,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import SpreadsheetImport from "./SpreadsheetImport";
 
 const locationColumns = [
-  { key: "name", label: "Nome", required: true, example: "Torre A" },
-  { key: "type", label: "Tipo (torre/pavimento/unidade/ambiente)", required: true, example: "torre" },
-  { key: "obra_name", label: "Nome da Obra", required: true, example: "Residencial Alpha" },
-  { key: "parent_name", label: "Local Pai (opcional)", required: false, example: "" },
+  { key: "name", label: "Nome", required: true, example: "Apt 101" },
+  { key: "type", label: "Tipo (torre/pavimento/unidade/ambiente)", required: true, example: "unidade" },
+  { key: "parent_path", label: "Caminho Pai (Obra > Local > ...)", required: false, example: "Morada Florata > Torre B > 08 Oitavo" },
 ];
 
 const typeLabels: Record<string, string> = { torre: "Torre", pavimento: "Pavimento", unidade: "Unidade", ambiente: "Ambiente" };
