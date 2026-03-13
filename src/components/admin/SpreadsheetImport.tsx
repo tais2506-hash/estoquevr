@@ -26,6 +26,8 @@ interface SpreadsheetImportProps {
   sheetName: string;
   /** A marker to validate this is the correct template */
   templateId: string;
+  /** Pre-fill the template with existing data rows */
+  existingData?: Record<string, string>[];
   onImport: (rows: Record<string, string>[]) => Promise<ImportResult>;
 }
 
