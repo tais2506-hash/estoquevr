@@ -67,7 +67,7 @@ const InsumosCRUD = () => {
         name: form.name, code: form.code, unit: form.unit, category: form.category,
         controla_estoque: form.controla_estoque, controla_consumo: form.controla_consumo,
         controla_rastreabilidade: form.controla_rastreabilidade, material_nao_estocavel: form.material_nao_estocavel,
-        exige_servico_baixa: form.exige_servico_baixa, estoque_minimo: form.estoque_minimo,
+        estoque_minimo: form.estoque_minimo,
       };
       if (editing) {
         const { error } = await supabase.from("insumos").update(payload as any).eq("id", editing.id);
