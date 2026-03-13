@@ -53,10 +53,6 @@ type KitRow = {
 type KitItemRow = {
   id: string; kit_id: string; insumo_id: string; quantity: number; created_at: string;
 };
-type ServicePackageRow = {
-  id: string; obra_id: string; name: string; eap_code: string; unit: string; status: string;
-  deleted_at: string | null; created_at: string; updated_at: string;
-};
 type LocationRow = {
   id: string; obra_id: string; parent_id: string | null; name: string;
   type: string; status: string;
