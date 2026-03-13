@@ -331,7 +331,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, insumos, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
-  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; servicePackageId?: string; locationId?: string; quantidadeExecutada?: number; kitId?: string }) => {
+  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => {
     if (!userId) return;
     const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
     const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
@@ -340,9 +340,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       obra_id: data.obraId, insumo_id: data.insumoId, quantity: data.quantity,
       date: data.date, local_aplicacao: data.localAplicacao, responsavel: data.responsavel,
       user_id: userId,
-      service_package_id: data.servicePackageId || null,
       location_id: data.locationId || null,
-      quantidade_executada: data.quantidadeExecutada || null,
       kit_id: data.kitId || null,
     } as any).select().single();
     if (error) throw error;
