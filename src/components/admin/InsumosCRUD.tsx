@@ -194,6 +194,13 @@ const InsumosCRUD = () => {
             templateFileName="modelo_insumos.xlsx"
             sheetName="Insumos"
             templateId="insumos_v1"
+            existingData={insumos.map(i => ({
+              code: i.code,
+              name: i.name,
+              unit: i.unit,
+              category: i.category || "",
+              estoque_minimo: String(i.estoque_minimo || 0),
+            }))}
             onImport={handleSpreadsheetImport}
           />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
