@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle, Loader2, Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ interface ImportResult {
   errors: string[];
 }
 
+const PLACEHOLDER_FORNECEDOR = "00000000-0000-0000-0000-000000000000";
+
 const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
   const { selectedObraId, insumos, obras, refetchAll } = useInventory();
   const { user } = useAuth();
@@ -21,36 +23,24 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [fornecedores, setFornecedores] = useState<any[]>([]);
-
-  useEffect(() => {
-    const loadFornecedores = async () => {
-      const { data } = await supabase.from("fornecedores").select("*").is("deleted_at", null).order("name");
-      if (data) setFornecedores(data);
-    };
-    loadFornecedores();
-  }, []);
 
   const selectedObra = obras.find(o => o.id === selectedObraId);
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
 
-    // Main sheet with headers and instructions
-    const headers = ["Código Insumo", "Nome Insumo", "Unidade", "Nota Fiscal", "CNPJ Fornecedor", "Nome Fornecedor", "Quantidade", "Valor Unitário", "Data (DD/MM/AAAA)"];
+    // Main sheet with headers
+    const headers = ["Código Insumo", "Nome Insumo", "Unidade", "Nota Fiscal", "Quantidade", "Valor Unitário", "Data (DD/MM/AAAA)"];
     const wsData = [headers];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Set column widths
     ws["!cols"] = [
       { wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 18 },
-      { wch: 20 }, { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 18 },
+      { wch: 12 }, { wch: 15 }, { wch: 18 },
     ];
-
     XLSX.utils.book_append_sheet(wb, ws, "Entradas");
 
-    // Insumos reference sheet (read-only data)
+    // Insumos reference sheet
     const insumosData = [["Código", "Nome", "Unidade", "Categoria"]];
     insumos.forEach(i => {
       insumosData.push([i.code, i.name, i.unit, i.category]);
@@ -58,15 +48,6 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
     const wsInsumos = XLSX.utils.aoa_to_sheet(insumosData);
     wsInsumos["!cols"] = [{ wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 25 }];
     XLSX.utils.book_append_sheet(wb, wsInsumos, "Insumos Cadastrados");
-
-    // Fornecedores reference sheet
-    const fornData = [["CNPJ", "Nome", "Contato"]];
-    fornecedores.forEach(f => {
-      fornData.push([f.cnpj, f.name, f.contact || ""]);
-    });
-    const wsForn = XLSX.utils.aoa_to_sheet(fornData);
-    wsForn["!cols"] = [{ wch: 20 }, { wch: 35 }, { wch: 25 }];
-    XLSX.utils.book_append_sheet(wb, wsForn, "Fornecedores Cadastrados");
 
     const fileName = `modelo_entrada_estoque_${selectedObra?.name || "obra"}.xlsx`.replace(/\s+/g, "_");
     XLSX.writeFile(wb, fileName);
@@ -98,14 +79,11 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         return;
       }
 
-      // Build lookup maps
       const insumoByCode = new Map(insumos.map(i => [i.code.trim().toLowerCase(), i]));
-      const fornByName = new Map(fornecedores.map(f => [f.name.trim().toLowerCase(), f]));
-      const fornByCnpj = new Map(fornecedores.map(f => [f.cnpj.replace(/\D/g, ""), f]));
 
       const errors: string[] = [];
       const validRows: {
-        insumo: any; fornecedor: any; notaFiscal: string;
+        insumo: any; notaFiscal: string;
         quantity: number; unitValue: number; totalValue: number; date: string;
       }[] = [];
 
@@ -116,23 +94,14 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         const lineNum = i + 1;
         const insumoCode = String(row[0] || "").trim().toLowerCase();
         const notaFiscal = String(row[3] || "").trim();
-        const cnpjRaw = String(row[4] || "").replace(/\D/g, "");
-        const fornNome = String(row[5] || "").trim().toLowerCase();
-        const quantity = parseFloat(String(row[6] || "0").replace(/,/g, ".")) || 0;
-        const unitValue = parseFloat(String(row[7] || "0").replace(/,/g, ".")) || 0;
-        const dateRaw = row[8];
+        const quantity = parseFloat(String(row[4] || "0").replace(/,/g, ".")) || 0;
+        const unitValue = parseFloat(String(row[5] || "0").replace(/,/g, ".")) || 0;
+        const dateRaw = row[6];
 
         // Validate insumo
         const insumo = insumoByCode.get(insumoCode);
         if (!insumo) {
           errors.push(`Linha ${lineNum}: Insumo "${row[0]}" não cadastrado no sistema`);
-          continue;
-        }
-
-        // Validate fornecedor
-        let fornecedor = fornByCnpj.get(cnpjRaw) || fornByName.get(fornNome);
-        if (!fornecedor) {
-          errors.push(`Linha ${lineNum}: Fornecedor "${row[5] || row[4]}" não cadastrado no sistema`);
           continue;
         }
 
@@ -163,7 +132,7 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         if (!dateStr) dateStr = new Date().toISOString().split("T")[0];
 
         validRows.push({
-          insumo, fornecedor, notaFiscal,
+          insumo, notaFiscal,
           quantity, unitValue, totalValue: quantity * unitValue, date: dateStr,
         });
       }
@@ -181,12 +150,11 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
 
       for (const row of validRows) {
         try {
-          // Insert entrada
           const { data: inserted, error: insertErr } = await supabase.from("entradas").insert({
             obra_id: selectedObraId,
             insumo_id: row.insumo.id,
             nota_fiscal: row.notaFiscal,
-            fornecedor_id: row.fornecedor.id,
+            fornecedor_id: PLACEHOLDER_FORNECEDOR,
             quantity: row.quantity,
             unit_value: row.unitValue,
             total_value: row.totalValue,
@@ -292,12 +260,12 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground">1. Baixe o modelo</h3>
           <p className="text-xs text-muted-foreground">
-            O modelo vem com as abas de referência contendo todos os insumos e fornecedores já cadastrados.
-            Use os códigos e CNPJs dessas abas para preencher a aba "Entradas".
+            O modelo vem com a aba de referência contendo todos os insumos já cadastrados.
+            Use os códigos dessa aba para preencher a aba "Entradas".
           </p>
           <Button variant="outline" onClick={downloadTemplate} className="w-full gap-2">
             <Download className="w-4 h-4" />
-            Baixar Modelo ({insumos.length} insumos, {fornecedores.length} fornecedores)
+            Baixar Modelo ({insumos.length} insumos)
           </Button>
         </div>
 
@@ -305,7 +273,7 @@ const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground">2. Preencha e envie</h3>
           <p className="text-xs text-muted-foreground">
-            Somente insumos e fornecedores já cadastrados serão aceitos. Linhas com dados não encontrados serão ignoradas.
+            Somente insumos já cadastrados serão aceitos. Linhas com dados não encontrados serão ignoradas.
           </p>
 
           <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
