@@ -195,12 +195,19 @@ const LocationsCRUD = () => {
     return { success, skipped, errors };
   };
 
-  const getLocationPath = (locId: string): string => {
+  const getLocationPath = (locId: string, includeObra = false): string => {
     const parts: string[] = [];
     let current = locations.find(l => l.id === locId);
     while (current) {
       parts.unshift(current.name);
       current = current.parent_id ? locations.find(l => l.id === current!.parent_id) : undefined;
+    }
+    if (includeObra) {
+      const loc = locations.find(l => l.id === locId);
+      if (loc) {
+        const obra = obras.find(o => o.id === loc.obra_id);
+        if (obra) parts.unshift(obra.name);
+      }
     }
     return parts.join(" > ");
   };
