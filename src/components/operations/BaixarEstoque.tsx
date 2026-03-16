@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
-import { ArrowLeft, ArrowDown, Package } from "lucide-react";
+import { ArrowLeft, ArrowDown, Package, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
