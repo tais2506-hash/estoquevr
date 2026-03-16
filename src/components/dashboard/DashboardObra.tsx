@@ -114,16 +114,15 @@ const DashboardObra = () => {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4">
-          <Select value={selectedObraId} onValueChange={setSelectedObraId}>
-            <SelectTrigger className="w-72">
-              <SelectValue placeholder="Selecione uma obra..." />
-            </SelectTrigger>
-            <SelectContent>
-              {activeObras.map(o => (
-                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={activeObras.map(o => ({ value: o.id, label: o.name }))}
+            value={selectedObraId}
+            onValueChange={setSelectedObraId}
+            placeholder="Selecione uma obra..."
+            searchPlaceholder="Buscar obra..."
+            emptyMessage="Nenhuma obra encontrada."
+            className="w-72"
+          />
         </div>
         <div className="text-center py-16 text-muted-foreground">
           <Package className="w-12 h-12 mx-auto mb-4 opacity-30" />
