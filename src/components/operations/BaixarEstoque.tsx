@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
-import { ArrowLeft, ArrowDown, Package } from "lucide-react";
+import { ArrowLeft, ArrowDown, Package, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
@@ -13,6 +14,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
+  const [retroativo, setRetroativo] = useState(false);
+  const [semLocal, setSemLocal] = useState(false);
+  const [semData, setSemData] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
@@ -77,18 +81,23 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     const qty = parseFloat(formData.quantity);
     if (qty > maxQty) { toast.error(`Estoque insuficiente. Disponível: ${maxQty}`); return; }
     if (!formData.insumoId || !qty || !formData.responsavel) { toast.error("Preencha todos os campos obrigatórios"); return; }
-    if (requiresLocation && !formData.locationId) { toast.error("Local é obrigatório para este insumo (rastreabilidade)"); return; }
+    if (requiresLocation && !formData.locationId && !(retroativo && semLocal)) { toast.error("Local é obrigatório para este insumo (rastreabilidade)"); return; }
 
-    const localAplicacao = formData.locationId
-      ? getLocationPath(formData.locationId)
-      : formData.localAplicacao || "Não especificado";
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
+    const localAplicacao = (retroativo && semLocal)
+      ? "Sem histórico de local" + retroLabel
+      : formData.locationId
+        ? getLocationPath(formData.locationId) + retroLabel
+        : (formData.localAplicacao || "Não especificado") + retroLabel;
+
+    const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
 
     setIsSubmitting(true);
     try {
       await addSaida({
         obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty,
-        date: formData.date, localAplicacao, responsavel: formData.responsavel,
-        locationId: formData.locationId || undefined,
+        date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+        locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
         servicePackageId: formData.servicePackageId || undefined,
       });
       toast.success("Saída registrada!");
@@ -118,17 +127,22 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       }
     }
 
-    const localAplicacao = formData.locationId
-      ? getLocationPath(formData.locationId)
-      : formData.localAplicacao || "Kit";
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
+    const localAplicacao = (retroativo && semLocal)
+      ? "Sem histórico de local" + retroLabel
+      : formData.locationId
+        ? getLocationPath(formData.locationId) + retroLabel
+        : (formData.localAplicacao || "Kit") + retroLabel;
+
+    const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
 
     setIsSubmitting(true);
     try {
       for (const ki of kitItms) {
         await addSaida({
           obraId: selectedObraId, insumoId: ki.insumo_id, quantity: ki.quantity * qty,
-          date: formData.date, localAplicacao, responsavel: formData.responsavel,
-          locationId: formData.locationId || undefined,
+          date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+          locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
           kitId: formData.kitId,
           servicePackageId: formData.servicePackageId || undefined,
         });
@@ -144,6 +158,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
   const resetAll = () => {
     setDone(false);
+    setRetroativo(false); setSemLocal(false); setSemData(false);
     setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
@@ -179,6 +194,36 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           </Button>
         )}
       </div>
+
+      {/* Retroativo toggle */}
+      <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-border bg-card">
+        <Checkbox
+          id="retroativo"
+          checked={retroativo}
+          onCheckedChange={(v) => {
+            setRetroativo(!!v);
+            if (!v) { setSemLocal(false); setSemData(false); }
+          }}
+        />
+        <label htmlFor="retroativo" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <History className="w-4 h-4 text-muted-foreground" />
+          Carga Retroativa
+        </label>
+        <span className="text-xs text-muted-foreground">— Local e data opcionais</span>
+      </div>
+
+      {retroativo && (
+        <div className="flex gap-6 mb-4 p-3 rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5">
+          <div className="flex items-center gap-2">
+            <Checkbox id="semLocal" checked={semLocal} onCheckedChange={(v) => setSemLocal(!!v)} />
+            <label htmlFor="semLocal" className="text-sm cursor-pointer">Sem histórico do local</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="semData" checked={semData} onCheckedChange={(v) => setSemData(!!v)} />
+            <label htmlFor="semData" className="text-sm cursor-pointer">Sem histórico da data</label>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         {mode === "insumo" ? (
@@ -216,21 +261,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${retroativo && semData ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
           <div className="space-y-2">
             <Label>Quantidade{mode === "kit" ? " de kits" : ""}</Label>
             <Input type="number" min="0" max={mode === "insumo" ? maxQty : undefined} step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
           </div>
-          <div className="space-y-2">
-            <Label>Data</Label>
-            <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
-          </div>
+          {!(retroativo && semData) && (
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
+            </div>
+          )}
         </div>
 
+        {retroativo && semData && (
+          <p className="text-xs text-muted-foreground italic">📅 Data não informada — será registrado com a data de hoje.</p>
+        )}
+
         {/* Location */}
-        {obraLocations.length > 0 && (
+        {!(retroativo && semLocal) && obraLocations.length > 0 && (
           <div className="space-y-2">
-            <Label>Local {requiresLocation && <span className="text-destructive">*</span>}</Label>
+            <Label>Local {requiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
             <SearchableSelect
               options={locationOptions}
               value={formData.locationId}
@@ -242,8 +293,12 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
+        {retroativo && semLocal && (
+          <p className="text-xs text-muted-foreground italic">📍 Local não informado — será registrado como "Sem histórico de local".</p>
+        )}
+
         {/* Fallback text location */}
-        {obraLocations.length === 0 && (
+        {!(retroativo && semLocal) && obraLocations.length === 0 && (
           <div className="space-y-2">
             <Label>Local de Aplicação</Label>
             <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
