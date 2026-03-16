@@ -94,7 +94,6 @@ const ServicePackagesCRUD = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              <th className="text-left p-3 font-medium text-muted-foreground">Código EAP</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
