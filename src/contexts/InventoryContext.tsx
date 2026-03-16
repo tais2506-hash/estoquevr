@@ -258,7 +258,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
     const { data: inserted, error } = await supabase.from("entradas").insert({
       obra_id: data.obraId, insumo_id: data.insumoId, nota_fiscal: data.notaFiscal,
-      fornecedor_id: "00000000-0000-0000-0000-000000000000",
+      fornecedor_id: null,
       quantity: data.quantity, unit_value: data.unitValue,
       total_value: data.totalValue, date: data.date,
       user_id: userId,
