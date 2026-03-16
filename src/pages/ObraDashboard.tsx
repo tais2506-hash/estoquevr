@@ -39,6 +39,7 @@ const ObraDashboard = () => {
       case "baixar": return <BaixarEstoque onBack={() => setView("menu")} />;
       case "transferir": return <TransferenciaEstoque onBack={() => setView("menu")} />;
       case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
+      case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
       default: return null;
     }
   };
