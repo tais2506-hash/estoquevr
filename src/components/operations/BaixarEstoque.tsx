@@ -116,7 +116,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
   const resetAll = () => {
     setDone(false);
-    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "" });
+    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
   if (done) {
