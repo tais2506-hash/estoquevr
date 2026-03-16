@@ -135,12 +135,15 @@ const DashboardObra = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedObraId} onValueChange={setSelectedObraId}>
-          <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          options={activeObras.map(o => ({ value: o.id, label: o.name }))}
+          value={selectedObraId}
+          onValueChange={setSelectedObraId}
+          placeholder="Selecione uma obra..."
+          searchPlaceholder="Buscar obra..."
+          emptyMessage="Nenhuma obra encontrada."
+          className="w-72"
+        />
         <Select value={periodDays} onValueChange={setPeriodDays}>
           <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>

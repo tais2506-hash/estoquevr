@@ -334,15 +334,19 @@ const LocationsCRUD = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Local Pai (opcional)</Label>
-                  <Select value={form.parent_id || "none"} onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Nenhum (raiz)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum (raiz)</SelectItem>
-                      {parentOptions.map(l => (
-                        <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id, true)} ({typeLabels[l.type] || l.type})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "none", label: "Nenhum (raiz)" },
+                      ...parentOptions.map(l => ({
+                        value: l.id,
+                        label: `${getLocationPath(l.id, true)} (${typeLabels[l.type] || l.type})`,
+                      })),
+                    ]}
+                    value={form.parent_id || "none"}
+                    onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}
+                    placeholder="Nenhum (raiz)"
+                    searchPlaceholder="Buscar local pai..."
+                  />
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
