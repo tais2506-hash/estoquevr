@@ -25,6 +25,10 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     locations.filter(l => l.obra_id === selectedObraId),
     [locations, selectedObraId]
   );
+  const obraServices = useMemo(() =>
+    servicePackages.filter(s => s.obra_id === selectedObraId && s.status === "ativo"),
+    [servicePackages, selectedObraId]
+  );
 
   const selectedInsumo = insumos.find(i => i.id === formData.insumoId);
   const requiresLocation = selectedInsumo?.controla_rastreabilidade;
