@@ -94,6 +94,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+  const getServiceName = (id: string | null) => {
+    if (!id) return null;
+    const s = servicePackages.find(sp => sp.id === id);
+    return s ? (s.eap_code ? `${s.eap_code} - ${s.name}` : s.name) : null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
