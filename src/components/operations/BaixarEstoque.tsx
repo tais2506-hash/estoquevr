@@ -61,6 +61,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty,
         date: formData.date, localAplicacao, responsavel: formData.responsavel,
         locationId: formData.locationId || undefined,
+        servicePackageId: formData.servicePackageId || undefined,
       });
       toast.success("Saída registrada!");
       setDone(true);
