@@ -163,8 +163,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             date: formData.date,
             user_id: user.id,
             kit_id: formData.kitId,
-            service_package_id: formData.servicePackageId || null,
-          } as any);
+          });
         }
         toast.success(`Requisição de kit enviada! ${kitItms.length} itens aguardando aprovação.`);
         setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
