@@ -100,8 +100,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
         servicePackageId: formData.servicePackageId || undefined,
       });
-        servicePackageId: formData.servicePackageId || undefined,
-      });
       toast.success("Saída registrada!");
       setDone(true);
     } catch {
