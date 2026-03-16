@@ -12,7 +12,7 @@ const ServicePackagesCRUD = () => {
   const { servicePackages, refetchAll } = useInventory();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", eap_code: "", unit: "un" });
+  const [form, setForm] = useState({ name: "", unit: "un" });
 
   const resetForm = () => {
     setForm({ name: "", eap_code: "", unit: "un" });
