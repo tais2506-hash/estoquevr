@@ -4,8 +4,8 @@ import { ArrowLeft, ArrowDown, Package, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CascadingLocationSelect } from "@/components/ui/cascading-location-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [retroativo, setRetroativo] = useState(false);
   const [semLocal, setSemLocal] = useState(false);
   const [semData, setSemData] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
@@ -48,13 +49,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     return parts.join(" > ");
   };
 
+  const categories = useMemo(() => {
+    const cats = new Set(estoqueObra.map(e => e.insumo.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [estoqueObra]);
+
   const insumoOptions = useMemo(() =>
-    estoqueObra.map(e => ({
-      value: e.insumo_id,
-      label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
-      searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
-    })),
-    [estoqueObra, insumos]
+    estoqueObra
+      .filter(e => !categoryFilter || e.insumo.category === categoryFilter)
+      .map(e => {
+        const ins = insumos.find(i => i.id === e.insumo_id);
+        return {
+          value: e.insumo_id,
+          label: `[${ins?.code}] ${e.insumo.name} — ${e.quantity} ${e.insumo.unit}`,
+          searchTerms: `${ins?.code || ""} ${ins?.category || ""} ${e.insumo.name}`,
+          subtitle: ins?.category || "",
+        };
+      }),
+    [estoqueObra, insumos, categoryFilter]
   );
 
   const kitOptions = useMemo(() =>
@@ -63,11 +75,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       return { value: k.id, label: `${k.name} (${count} insumos)` };
     }),
     [kits, kitItems]
-  );
-
-  const locationOptions = useMemo(() =>
-    obraLocations.map(l => ({ value: l.id, label: getLocationPath(l.id) })),
-    [obraLocations]
   );
 
   const serviceOptions = useMemo(() =>
@@ -158,7 +165,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
   const resetAll = () => {
     setDone(false);
-    setRetroativo(false); setSemLocal(false); setSemData(false);
+    setRetroativo(false); setSemLocal(false); setSemData(false); setCategoryFilter("");
     setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
@@ -228,14 +235,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         {mode === "insumo" ? (
           <>
+            {categories.length > 1 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Filtrar por categoria</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button type="button" variant={categoryFilter === "" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                    onClick={() => setCategoryFilter("")}>Todas</Button>
+                  {categories.map(cat => (
+                    <Button key={cat} type="button" variant={categoryFilter === cat ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                      onClick={() => { setCategoryFilter(cat); setFormData(p => ({ ...p, insumoId: "" })); }}>{cat}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Insumo</Label>
               <SearchableSelect
                 options={insumoOptions}
                 value={formData.insumoId}
                 onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
-                placeholder="Selecione o insumo"
-                searchPlaceholder="Buscar por nome ou código..."
+                placeholder="Buscar por nome, código ou categoria..."
+                searchPlaceholder="Ex: arg massa, 01.001, hidráulica..."
                 emptyMessage="Nenhum insumo encontrado."
               />
             </div>
@@ -243,6 +263,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
                 <span className="text-muted-foreground">Disponível: </span>
                 <span className="font-bold text-foreground">{maxQty} {selectedItem.insumo.unit}</span>
+                {selectedInsumo?.category && <span className="ml-2 text-xs text-muted-foreground">({selectedInsumo.category})</span>}
                 {requiresLocation && <span className="ml-2 text-xs text-warning">⚠ Rastreabilidade obrigatória</span>}
               </div>
             )}
@@ -278,17 +299,15 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <p className="text-xs text-muted-foreground italic">📅 Data não informada — será registrado com a data de hoje.</p>
         )}
 
-        {/* Location */}
+        {/* Location - cascading */}
         {!(retroativo && semLocal) && obraLocations.length > 0 && (
           <div className="space-y-2">
             <Label>Local {requiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
-            <SearchableSelect
-              options={locationOptions}
+            <CascadingLocationSelect
+              locations={obraLocations}
               value={formData.locationId}
               onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              placeholder="Selecione o local"
-              searchPlaceholder="Buscar local..."
-              emptyMessage="Nenhum local encontrado."
+              required={!!requiresLocation}
             />
           </div>
         )}
