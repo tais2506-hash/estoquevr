@@ -29,6 +29,7 @@ interface Requisicao {
   user_id: string;
   created_at: string;
   kit_id: string | null;
+  service_package_id: string | null;
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
