@@ -65,6 +65,7 @@ interface InventoryContextType {
   kits: KitRow[];
   kitItems: KitItemRow[];
   locations: LocationRow[];
+  servicePackages: ServicePackageRow[];
   loading: boolean;
 
   selectedObraId: string | null;
