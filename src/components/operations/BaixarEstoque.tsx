@@ -195,6 +195,36 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         )}
       </div>
 
+      {/* Retroativo toggle */}
+      <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-border bg-card">
+        <Checkbox
+          id="retroativo"
+          checked={retroativo}
+          onCheckedChange={(v) => {
+            setRetroativo(!!v);
+            if (!v) { setSemLocal(false); setSemData(false); }
+          }}
+        />
+        <label htmlFor="retroativo" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <History className="w-4 h-4 text-muted-foreground" />
+          Carga Retroativa
+        </label>
+        <span className="text-xs text-muted-foreground">— Local e data opcionais</span>
+      </div>
+
+      {retroativo && (
+        <div className="flex gap-6 mb-4 p-3 rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5">
+          <div className="flex items-center gap-2">
+            <Checkbox id="semLocal" checked={semLocal} onCheckedChange={(v) => setSemLocal(!!v)} />
+            <label htmlFor="semLocal" className="text-sm cursor-pointer">Sem histórico do local</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="semData" checked={semData} onCheckedChange={(v) => setSemData(!!v)} />
+            <label htmlFor="semData" className="text-sm cursor-pointer">Sem histórico da data</label>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         {mode === "insumo" ? (
           <>
