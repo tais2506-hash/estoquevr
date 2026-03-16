@@ -368,14 +368,14 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           {obraServices.length > 0 && (
             <div className="space-y-2">
               <Label>Serviço</Label>
-              <Select value={formData.servicePackageId} onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
-                <SelectContent>
-                  {obraServices.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.eap_code ? `${s.eap_code} - ` : ""}{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={obraServices.map(s => ({ value: s.id, label: s.name }))}
+                value={formData.servicePackageId}
+                onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}
+                placeholder="Selecione o serviço"
+                searchPlaceholder="Buscar serviço..."
+                emptyMessage="Nenhum serviço encontrado."
+              />
             </div>
           )}
 
