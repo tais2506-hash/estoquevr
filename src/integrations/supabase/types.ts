@@ -772,6 +772,92 @@ export type Database = {
         }
         Relationships: []
       }
+      requisicoes: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          date: string
+          id: string
+          insumo_id: string
+          kit_id: string | null
+          local_aplicacao: string
+          location_id: string | null
+          motivo_rejeicao: string | null
+          obra_id: string
+          quantity: number
+          responsavel: string
+          solicitante_nome: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          insumo_id: string
+          kit_id?: string | null
+          local_aplicacao?: string
+          location_id?: string | null
+          motivo_rejeicao?: string | null
+          obra_id: string
+          quantity: number
+          responsavel: string
+          solicitante_nome?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          insumo_id?: string
+          kit_id?: string | null
+          local_aplicacao?: string
+          location_id?: string | null
+          motivo_rejeicao?: string | null
+          obra_id?: string
+          quantity?: number
+          responsavel?: string
+          solicitante_nome?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicoes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saidas: {
         Row: {
           created_at: string
