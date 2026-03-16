@@ -28,7 +28,7 @@ const ServicePackagesCRUD = () => {
 
     if (editingId) {
       const { error } = await supabase.from("service_packages").update({
-        name: form.name, eap_code: form.eap_code, unit: form.unit,
+        name: form.name, unit: form.unit,
       }).eq("id", editingId);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Serviço atualizado!");
