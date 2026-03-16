@@ -158,6 +158,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
   const resetAll = () => {
     setDone(false);
+    setRetroativo(false); setSemLocal(false); setSemData(false);
     setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
