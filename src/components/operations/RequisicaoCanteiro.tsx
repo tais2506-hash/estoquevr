@@ -29,10 +29,11 @@ interface Requisicao {
   user_id: string;
   created_at: string;
   kit_id: string | null;
+  service_package_id: string | null;
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems, refetchAll } = useInventory();
+  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems, servicePackages, refetchAll } = useInventory();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"nova" | "pendentes" | "historico">("nova");
@@ -40,7 +41,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "",
+    localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
   });
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -49,6 +50,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const obraLocations = useMemo(() => locations.filter(l => l.obra_id === selectedObraId), [locations, selectedObraId]);
+  const obraServices = useMemo(() => servicePackages.filter(s => s.obra_id === selectedObraId && s.status === "ativo"), [servicePackages, selectedObraId]);
 
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ["requisicoes", selectedObraId],
@@ -92,6 +94,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+  const getServiceName = (id: string | null) => {
+    if (!id) return null;
+    const s = servicePackages.find(sp => sp.id === id);
+    return s ? (s.eap_code ? `${s.eap_code} - ${s.name}` : s.name) : null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,10 +125,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           solicitante_nome: formData.solicitanteNome || user.name,
           date: formData.date,
           user_id: user.id,
+          service_package_id: formData.servicePackageId || null,
         } as any);
         if (error) throw error;
         toast.success("Requisição enviada! Aguardando aprovação do almoxarifado.");
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "" });
+        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
@@ -156,10 +164,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             date: formData.date,
             user_id: user.id,
             kit_id: formData.kitId,
+            service_package_id: formData.servicePackageId || null,
           } as any);
         }
         toast.success(`Requisição de kit enviada! ${kitItms.length} itens aguardando aprovação.`);
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "" });
+        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
@@ -191,6 +200,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         responsavel: req.responsavel,
         locationId: req.location_id || undefined,
         kitId: req.kit_id || undefined,
+        servicePackageId: req.service_package_id || undefined,
       });
 
       // Update requisition status
@@ -351,6 +361,20 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             </div>
           )}
 
+          {obraServices.length > 0 && (
+            <div className="space-y-2">
+              <Label>Serviço</Label>
+              <Select value={formData.servicePackageId} onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
+                <SelectContent>
+                  {obraServices.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.eap_code ? `${s.eap_code} - ` : ""}{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Enviando..." : "Enviar Requisição"}
           </Button>
@@ -382,6 +406,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                 <p>👤 Responsável: <span className="text-foreground">{req.responsavel}</span></p>
                 <p>📍 Local: <span className="text-foreground">{req.local_aplicacao || "—"}</span></p>
                 <p>📅 Data: <span className="text-foreground">{new Date(req.date).toLocaleDateString("pt-BR")}</span></p>
+                {getServiceName(req.service_package_id) && (
+                  <p className="col-span-2">🔧 Serviço: <span className="text-foreground font-medium">{getServiceName(req.service_package_id)}</span></p>
+                )}
               </div>
 
               {/* Estoque check */}

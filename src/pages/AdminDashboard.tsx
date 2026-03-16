@@ -10,6 +10,7 @@ import InsumosCRUD from "@/components/admin/InsumosCRUD";
 import KitsCRUD from "@/components/admin/KitsCRUD";
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import UserManagement from "@/components/admin/UserManagement";
+import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
 import ReportsPage from "@/components/reports/ReportsPage";
@@ -99,6 +100,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
               <TabsTrigger value="kits">Kits</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
+              <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
@@ -111,6 +113,7 @@ const AdminDashboard = () => {
           <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
           <TabsContent value="kits"><KitsCRUD /></TabsContent>
           <TabsContent value="locais"><LocationsCRUD /></TabsContent>
+          <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>
           <TabsContent value="usuarios"><UserManagement /></TabsContent>
         </Tabs>
       </main>

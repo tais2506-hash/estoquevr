@@ -48,6 +48,10 @@ type LocationRow = {
   type: string; status: string;
   deleted_at: string | null; created_at: string; updated_at: string;
 };
+type ServicePackageRow = {
+  id: string; obra_id: string; name: string; eap_code: string; unit: string;
+  status: string; deleted_at: string | null; created_at: string; updated_at: string;
+};
 
 export type EstoqueWithInsumo = EstoqueRow & { insumo: InsumoRow };
 
@@ -61,6 +65,7 @@ interface InventoryContextType {
   kits: KitRow[];
   kitItems: KitItemRow[];
   locations: LocationRow[];
+  servicePackages: ServicePackageRow[];
   loading: boolean;
 
   selectedObraId: string | null;
@@ -69,7 +74,7 @@ interface InventoryContextType {
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
   addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string }) => Promise<void>;
-  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
 
@@ -183,6 +188,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     enabled: !!userId,
   });
 
+  const { data: servicePackages = [] } = useQuery({
+    queryKey: ["service_packages"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("service_packages").select("*").is("deleted_at", null).order("name");
+      if (error) throw error;
+      return data as ServicePackageRow[];
+    },
+    enabled: !!userId,
+  });
+
   const loading = l1 || l2 || l4;
 
   const getSelectedObra = useCallback(() => obras.find(o => o.id === selectedObraId), [obras, selectedObraId]);
@@ -202,6 +217,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["kits"] });
     queryClient.invalidateQueries({ queryKey: ["kit_items"] });
     queryClient.invalidateQueries({ queryKey: ["locations"] });
+    queryClient.invalidateQueries({ queryKey: ["service_packages"] });
   }, [queryClient]);
 
   const updateEstoque = useCallback(async (obraId: string, insumoId: string, qtyDelta: number, valueDelta: number) => {
@@ -257,7 +273,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, insumos, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
-  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string }) => {
+  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => {
     if (!userId) return;
     const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
     const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
@@ -266,6 +282,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       obra_id: data.obraId, insumo_id: data.insumoId, quantity: data.quantity,
       date: data.date, local_aplicacao: data.localAplicacao, responsavel: data.responsavel,
       user_id: userId, location_id: data.locationId || null, kit_id: data.kitId || null,
+      service_package_id: data.servicePackageId || null,
     } as any).select().single();
     if (error) throw error;
 
@@ -316,7 +333,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   return (
     <InventoryContext.Provider value={{
       obras, insumos, estoque, entradas, movimentacoes, saidas,
-      kits, kitItems, locations, loading,
+      kits, kitItems, locations, servicePackages, loading,
       selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
       addEntrada, addSaida, addTransferencia, addInventarioItem,
       refetchAll,

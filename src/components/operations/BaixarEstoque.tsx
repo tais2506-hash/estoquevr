@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations } = useInventory();
+  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages } = useInventory();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "",
+    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
@@ -24,6 +24,10 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const obraLocations = useMemo(() =>
     locations.filter(l => l.obra_id === selectedObraId),
     [locations, selectedObraId]
+  );
+  const obraServices = useMemo(() =>
+    servicePackages.filter(s => s.obra_id === selectedObraId && s.status === "ativo"),
+    [servicePackages, selectedObraId]
   );
 
   const selectedInsumo = insumos.find(i => i.id === formData.insumoId);
@@ -57,6 +61,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty,
         date: formData.date, localAplicacao, responsavel: formData.responsavel,
         locationId: formData.locationId || undefined,
+        servicePackageId: formData.servicePackageId || undefined,
       });
       toast.success("Saída registrada!");
       setDone(true);
@@ -97,6 +102,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           date: formData.date, localAplicacao, responsavel: formData.responsavel,
           locationId: formData.locationId || undefined,
           kitId: formData.kitId,
+          servicePackageId: formData.servicePackageId || undefined,
         });
       }
       toast.success(`Kit baixado! ${kitItms.length} insumos consumidos.`);
@@ -110,7 +116,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
   const resetAll = () => {
     setDone(false);
-    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "" });
+    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
   if (done) {
@@ -223,6 +229,20 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <Label>Responsável</Label>
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
+
+        {obraServices.length > 0 && (
+          <div className="space-y-2">
+            <Label>Serviço</Label>
+            <Select value={formData.servicePackageId} onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
+              <SelectContent>
+                {obraServices.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.eap_code ? `${s.eap_code} - ` : ""}{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Registrando..." : mode === "kit" ? "Baixar Kit" : "Registrar Saída"}
