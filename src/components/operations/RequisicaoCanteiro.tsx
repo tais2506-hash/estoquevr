@@ -32,7 +32,7 @@ interface Requisicao {
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems, refetchAll } = useInventory();
+  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems, servicePackages, refetchAll } = useInventory();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"nova" | "pendentes" | "historico">("nova");
@@ -40,7 +40,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "",
+    localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
   });
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
