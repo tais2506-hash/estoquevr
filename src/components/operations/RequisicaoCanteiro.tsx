@@ -125,8 +125,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           solicitante_nome: formData.solicitanteNome || user.name,
           date: formData.date,
           user_id: user.id,
-          service_package_id: formData.servicePackageId || null,
-        } as any);
+        });
         if (error) throw error;
         toast.success("Requisição enviada! Aguardando aprovação do almoxarifado.");
         setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
