@@ -958,7 +958,7 @@ export type Database = {
           eap_code: string
           id: string
           name: string
-          obra_id: string
+          obra_id: string | null
           status: string
           unit: string
           updated_at: string
@@ -969,7 +969,7 @@ export type Database = {
           eap_code?: string
           id?: string
           name: string
-          obra_id: string
+          obra_id?: string | null
           status?: string
           unit?: string
           updated_at?: string
@@ -980,20 +980,12 @@ export type Database = {
           eap_code?: string
           id?: string
           name?: string
-          obra_id?: string
+          obra_id?: string | null
           status?: string
           unit?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "service_packages_obra_id_fkey"
-            columns: ["obra_id"]
-            isOneToOne: false
-            referencedRelation: "obras"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       transferencias: {
         Row: {
