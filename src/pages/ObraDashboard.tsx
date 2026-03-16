@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO } from "date-fns";
 import SubirEstoque from "@/components/operations/SubirEstoque";
 import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
@@ -22,13 +21,29 @@ const operations = [
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary" },
 ];
 
+const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  entrada: { label: "Entrada", variant: "default" },
+  saida: { label: "Saída", variant: "destructive" },
+  transferencia_entrada: { label: "Transf. Entrada", variant: "default" },
+  transferencia_saida: { label: "Transf. Saída", variant: "destructive" },
+  devolucao: { label: "Devolução", variant: "secondary" },
+  ajuste_inventario: { label: "Ajuste Inventário", variant: "outline" },
+};
+
 const ObraDashboard = () => {
   const [view, setView] = useState<OperationView>("menu");
-  const [showMovs, setShowMovs] = useState(false);
+  const [movsLimit, setMovsLimit] = useState(20);
   const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos } = useInventory();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
+
+  const movsObra = useMemo(() => {
+    if (!selectedObraId) return [];
+    return movimentacoes
+      .filter(m => m.obra_id === selectedObraId)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));
+  }, [movimentacoes, selectedObraId]);
 
   if (!obra || !selectedObraId) { navigate("/obras"); return null; }
 
@@ -36,28 +51,8 @@ const ObraDashboard = () => {
   const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
   const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
 
-  const movsObra = useMemo(() =>
-    movimentacoes
-      .filter(m => m.obra_id === selectedObraId)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)),
-    [movimentacoes, selectedObraId]
-  );
-
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
-
-  const getMovTypeBadge = (type: string) => {
-    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      entrada: { label: "Entrada", variant: "default" },
-      saida: { label: "Saída", variant: "destructive" },
-      transferencia_entrada: { label: "Transf. Entrada", variant: "default" },
-      transferencia_saida: { label: "Transf. Saída", variant: "destructive" },
-      devolucao: { label: "Devolução", variant: "secondary" },
-      ajuste_inventario: { label: "Ajuste Inventário", variant: "outline" },
-    };
-    const info = map[type] || { label: type, variant: "secondary" as const };
-    return <Badge variant={info.variant}>{info.label}</Badge>;
-  };
 
   const renderOperation = () => {
     switch (view) {
@@ -69,6 +64,8 @@ const ObraDashboard = () => {
       default: return null;
     }
   };
+
+  const movsToShow = movsObra.slice(0, movsLimit);
 
   return (
     <div className="min-h-screen bg-background">
@@ -141,6 +138,59 @@ const ObraDashboard = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+
+            {/* Histórico de Movimentações */}
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <History className="w-5 h-5 text-muted-foreground" /> Histórico de Movimentações
+              </h3>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Data</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
+                        <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Descrição</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movsToShow.map((mov) => {
+                        const info = MOV_TYPE_MAP[mov.type] || { label: mov.type, variant: "secondary" as const };
+                        return (
+                          <tr key={mov.id} className="border-b border-border/50 last:border-0">
+                            <td className="p-3 text-foreground whitespace-nowrap">{mov.date}</td>
+                            <td className="p-3"><Badge variant={info.variant}>{info.label}</Badge></td>
+                            <td className="p-3">
+                              <p className="font-medium text-foreground">{getInsumoName(mov.insumo_id)}</p>
+                            </td>
+                            <td className="p-3 text-right font-mono text-foreground">
+                              {mov.type === "saida" || mov.type === "transferencia_saida" || mov.type === "devolucao"
+                                ? `-${mov.quantity}`
+                                : `+${mov.quantity}`
+                              } {getInsumoUnit(mov.insumo_id)}
+                            </td>
+                            <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
+                          </tr>
+                        );
+                      })}
+                      {movsObra.length === 0 && (
+                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {movsObra.length > movsLimit && (
+                  <div className="p-3 border-t border-border text-center">
+                    <Button variant="ghost" size="sm" onClick={() => setMovsLimit(prev => prev + 30)}>
+                      Carregar mais ({movsObra.length - movsLimit} restantes)
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
