@@ -44,7 +44,7 @@ const ServicePackagesCRUD = () => {
   };
 
   const handleEdit = (s: typeof servicePackages[0]) => {
-    setForm({ name: s.name, eap_code: s.eap_code, unit: s.unit });
+    setForm({ name: s.name, unit: s.unit });
     setEditingId(s.id);
     setOpen(true);
   };
