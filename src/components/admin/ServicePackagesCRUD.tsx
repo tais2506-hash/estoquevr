@@ -15,7 +15,7 @@ const ServicePackagesCRUD = () => {
   const [form, setForm] = useState({ name: "", unit: "un" });
 
   const resetForm = () => {
-    setForm({ name: "", eap_code: "", unit: "un" });
+    setForm({ name: "", unit: "un" });
     setEditingId(null);
     setOpen(false);
   };
