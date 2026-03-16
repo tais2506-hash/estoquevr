@@ -295,29 +295,33 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           {mode === "insumo" ? (
             <div className="space-y-2">
               <Label>Insumo <span className="text-destructive">*</span></Label>
-              <Select value={formData.insumoId} onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
-                <SelectContent>
-                  {estoqueObra.map(e => (
-                    <SelectItem key={e.insumo_id} value={e.insumo_id}>
-                      {e.insumo.name} — Disp: {e.quantity} {e.insumo.unit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={estoqueObra.map(e => ({
+                  value: e.insumo_id,
+                  label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
+                  searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
+                }))}
+                value={formData.insumoId}
+                onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
+                placeholder="Selecione o insumo"
+                searchPlaceholder="Buscar por nome ou código..."
+                emptyMessage="Nenhum insumo encontrado."
+              />
             </div>
           ) : (
             <div className="space-y-2">
               <Label>Kit <span className="text-destructive">*</span></Label>
-              <Select value={formData.kitId} onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o kit" /></SelectTrigger>
-                <SelectContent>
-                  {kits.map(k => {
-                    const count = kitItems.filter(ki => ki.kit_id === k.id).length;
-                    return <SelectItem key={k.id} value={k.id}>{k.name} ({count} insumos)</SelectItem>;
-                  })}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={kits.map(k => {
+                  const count = kitItems.filter(ki => ki.kit_id === k.id).length;
+                  return { value: k.id, label: `${k.name} (${count} insumos)` };
+                })}
+                value={formData.kitId}
+                onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
+                placeholder="Selecione o kit"
+                searchPlaceholder="Buscar kit..."
+                emptyMessage="Nenhum kit encontrado."
+              />
             </div>
           )}
 
