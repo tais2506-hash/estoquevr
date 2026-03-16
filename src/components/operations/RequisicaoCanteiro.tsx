@@ -406,6 +406,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                 <p>👤 Responsável: <span className="text-foreground">{req.responsavel}</span></p>
                 <p>📍 Local: <span className="text-foreground">{req.local_aplicacao || "—"}</span></p>
                 <p>📅 Data: <span className="text-foreground">{new Date(req.date).toLocaleDateString("pt-BR")}</span></p>
+                {getServiceName(req.service_package_id) && (
+                  <p className="col-span-2">🔧 Serviço: <span className="text-foreground font-medium">{getServiceName(req.service_package_id)}</span></p>
+                )}
               </div>
 
               {/* Estoque check */}
