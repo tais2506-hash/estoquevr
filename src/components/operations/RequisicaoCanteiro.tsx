@@ -195,6 +195,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         responsavel: req.responsavel,
         locationId: req.location_id || undefined,
         kitId: req.kit_id || undefined,
+        servicePackageId: req.service_package_id || undefined,
       });
 
       // Update requisition status
