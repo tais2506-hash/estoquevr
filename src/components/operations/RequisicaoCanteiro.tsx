@@ -162,7 +162,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           } as any);
         }
         toast.success(`Requisição de kit enviada! ${kitItms.length} itens aguardando aprovação.`);
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "" });
+        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
