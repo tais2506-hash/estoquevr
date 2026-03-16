@@ -14,6 +14,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
+  const [retroativo, setRetroativo] = useState(false);
+  const [semLocal, setSemLocal] = useState(false);
+  const [semData, setSemData] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
