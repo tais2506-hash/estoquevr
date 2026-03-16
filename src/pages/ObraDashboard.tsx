@@ -2,9 +2,15 @@ import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import SubirEstoque from "@/components/operations/SubirEstoque";
 import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
@@ -33,8 +39,8 @@ const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "second
 const ObraDashboard = () => {
   const [view, setView] = useState<OperationView>("menu");
   const [movsLimit, setMovsLimit] = useState(20);
-  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos } = useInventory();
-  const { logout } = useAuth();
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos, undoInventarioAjuste } = useInventory();
+  const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
 
@@ -156,6 +162,7 @@ const ObraDashboard = () => {
                         <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
                         <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Descrição</th>
+                        {isAdmin && <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -175,11 +182,48 @@ const ObraDashboard = () => {
                               } {getInsumoUnit(mov.insumo_id)}
                             </td>
                             <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
+                            {isAdmin && (
+                              <td className="p-3 text-center">
+                                {mov.type === "ajuste_inventario" && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer ajuste">
+                                        <Undo2 className="w-4 h-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Desfazer Ajuste de Inventário</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Tem certeza que deseja desfazer este ajuste? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido ao valor anterior. Esta ação não pode ser desfeita.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          onClick={async () => {
+                                            try {
+                                              await undoInventarioAjuste(mov.id);
+                                              toast.success("Ajuste de inventário desfeito com sucesso");
+                                            } catch (err: any) {
+                                              toast.error(err.message || "Erro ao desfazer ajuste");
+                                            }
+                                          }}
+                                        >
+                                          Desfazer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
                       {movsObra.length === 0 && (
-                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                        <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
                       )}
                     </tbody>
                   </table>

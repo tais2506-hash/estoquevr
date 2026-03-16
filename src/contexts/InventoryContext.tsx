@@ -77,6 +77,7 @@ interface InventoryContextType {
   addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
+  undoInventarioAjuste: (movimentacaoId: string) => Promise<void>;
 
   refetchAll: () => void;
 }
@@ -330,12 +331,46 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, estoque, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
+  const undoInventarioAjuste = useCallback(async (movimentacaoId: string) => {
+    if (!userId) return;
+
+    // Find the movimentacao
+    const mov = movimentacoes.find(m => m.id === movimentacaoId && m.type === "ajuste_inventario");
+    if (!mov) throw new Error("Movimentação de ajuste não encontrada");
+
+    // Find the inventario record via reference_id
+    const inventarioId = mov.reference_id;
+    if (!inventarioId) throw new Error("Referência do inventário não encontrada");
+
+    const { data: invRecord, error: invError } = await supabase
+      .from("inventarios").select("*").eq("id", inventarioId).single();
+    if (invError || !invRecord) throw new Error("Registro de inventário não encontrado");
+
+    const diferenca = invRecord.diferenca as number;
+
+    if (diferenca !== 0) {
+      // Reverse the stock adjustment
+      const estoqueItem = estoque.find(e => e.obra_id === mov.obra_id && e.insumo_id === mov.insumo_id);
+      const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+      await updateEstoque(mov.obra_id, mov.insumo_id, -diferenca, -diferenca * unitCost);
+    }
+
+    // Soft-delete the movimentacao
+    await supabase.from("movimentacoes").update({ deleted_at: new Date().toISOString() }).eq("id", movimentacaoId);
+
+    // Delete the inventario record (no soft-delete column, so we hard delete)
+    await supabase.from("inventarios").delete().eq("id", inventarioId);
+
+    await addAuditLog("desfazer_ajuste_inventario", "inventarios", inventarioId, mov.obra_id, invRecord, null);
+    refetchAll();
+  }, [userId, movimentacoes, estoque, updateEstoque, addAuditLog, refetchAll]);
+
   return (
     <InventoryContext.Provider value={{
       obras, insumos, estoque, entradas, movimentacoes, saidas,
       kits, kitItems, locations, servicePackages, loading,
       selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
-      addEntrada, addSaida, addTransferencia, addInventarioItem,
+      addEntrada, addSaida, addTransferencia, addInventarioItem, undoInventarioAjuste,
       refetchAll,
     }}>
       {children}
