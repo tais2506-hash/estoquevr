@@ -39,8 +39,8 @@ const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "second
 const ObraDashboard = () => {
   const [view, setView] = useState<OperationView>("menu");
   const [movsLimit, setMovsLimit] = useState(20);
-  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos } = useInventory();
-  const { logout } = useAuth();
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos, undoInventarioAjuste } = useInventory();
+  const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
 
