@@ -72,10 +72,14 @@ const SearchableSelect = ({
           filter={(value, search) => {
             const option = options.find((o) => o.value === value);
             if (!option) return 0;
-            const searchLower = search.toLowerCase();
-            if (option.label.toLowerCase().includes(searchLower)) return 1;
-            if (option.searchTerms?.toLowerCase().includes(searchLower)) return 1;
-            return 0;
+            const haystack = (
+              option.label +
+              " " +
+              (option.searchTerms || "")
+            ).toLowerCase();
+            // Multi-word: every word must match somewhere
+            const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+            return words.every((w) => haystack.includes(w)) ? 1 : 0;
           }}
         >
           <CommandInput placeholder={searchPlaceholder} />
