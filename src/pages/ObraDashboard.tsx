@@ -24,7 +24,8 @@ const operations = [
 
 const ObraDashboard = () => {
   const [view, setView] = useState<OperationView>("menu");
-  const { getSelectedObra, getEstoqueByObra, selectedObraId } = useInventory();
+  const [showMovs, setShowMovs] = useState(false);
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos } = useInventory();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
@@ -34,6 +35,29 @@ const ObraDashboard = () => {
   const estoqueObra = getEstoqueByObra(selectedObraId);
   const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
   const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
+
+  const movsObra = useMemo(() =>
+    movimentacoes
+      .filter(m => m.obra_id === selectedObraId)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)),
+    [movimentacoes, selectedObraId]
+  );
+
+  const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
+  const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+
+  const getMovTypeBadge = (type: string) => {
+    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      entrada: { label: "Entrada", variant: "default" },
+      saida: { label: "Saída", variant: "destructive" },
+      transferencia_entrada: { label: "Transf. Entrada", variant: "default" },
+      transferencia_saida: { label: "Transf. Saída", variant: "destructive" },
+      devolucao: { label: "Devolução", variant: "secondary" },
+      ajuste_inventario: { label: "Ajuste Inventário", variant: "outline" },
+    };
+    const info = map[type] || { label: type, variant: "secondary" as const };
+    return <Badge variant={info.variant}>{info.label}</Badge>;
+  };
 
   const renderOperation = () => {
     switch (view) {
