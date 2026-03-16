@@ -261,21 +261,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${retroativo && semData ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
           <div className="space-y-2">
             <Label>Quantidade{mode === "kit" ? " de kits" : ""}</Label>
             <Input type="number" min="0" max={mode === "insumo" ? maxQty : undefined} step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
           </div>
-          <div className="space-y-2">
-            <Label>Data</Label>
-            <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
-          </div>
+          {!(retroativo && semData) && (
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
+            </div>
+          )}
         </div>
 
+        {retroativo && semData && (
+          <p className="text-xs text-muted-foreground italic">📅 Data não informada — será registrado com a data de hoje.</p>
+        )}
+
         {/* Location */}
-        {obraLocations.length > 0 && (
+        {!(retroativo && semLocal) && obraLocations.length > 0 && (
           <div className="space-y-2">
-            <Label>Local {requiresLocation && <span className="text-destructive">*</span>}</Label>
+            <Label>Local {requiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
             <SearchableSelect
               options={locationOptions}
               value={formData.locationId}
@@ -287,8 +293,12 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
+        {retroativo && semLocal && (
+          <p className="text-xs text-muted-foreground italic">📍 Local não informado — será registrado como "Sem histórico de local".</p>
+        )}
+
         {/* Fallback text location */}
-        {obraLocations.length === 0 && (
+        {!(retroativo && semLocal) && obraLocations.length === 0 && (
           <div className="space-y-2">
             <Label>Local de Aplicação</Label>
             <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
