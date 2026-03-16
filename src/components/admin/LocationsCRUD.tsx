@@ -273,13 +273,14 @@ const LocationsCRUD = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar locais..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
-          <Select value={filterObraId} onValueChange={setFilterObraId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Obra" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as obras</SelectItem>
-              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[{ value: "all", label: "Todas as obras" }, ...activeObras.map(o => ({ value: o.id, label: o.name }))]}
+            value={filterObraId}
+            onValueChange={setFilterObraId}
+            placeholder="Obra"
+            searchPlaceholder="Buscar obra..."
+            className="w-48"
+          />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={collapseAll}>Recolher</Button>
