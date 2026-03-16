@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, ChevronRight, ChevronDown, MapPin } from "lucide-react";
@@ -272,13 +273,14 @@ const LocationsCRUD = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar locais..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
-          <Select value={filterObraId} onValueChange={setFilterObraId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Obra" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as obras</SelectItem>
-              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[{ value: "all", label: "Todas as obras" }, ...activeObras.map(o => ({ value: o.id, label: o.name }))]}
+            value={filterObraId}
+            onValueChange={setFilterObraId}
+            placeholder="Obra"
+            searchPlaceholder="Buscar obra..."
+            className="w-48"
+          />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={collapseAll}>Recolher</Button>
@@ -303,12 +305,14 @@ const LocationsCRUD = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Obra</Label>
-                  <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })} disabled={!!editing}>
-                    <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                    <SelectContent>
-                      {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={activeObras.map(o => ({ value: o.id, label: o.name }))}
+                    value={form.obra_id}
+                    onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })}
+                    placeholder="Selecione a obra"
+                    searchPlaceholder="Buscar obra..."
+                    disabled={!!editing}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -330,15 +334,19 @@ const LocationsCRUD = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Local Pai (opcional)</Label>
-                  <Select value={form.parent_id || "none"} onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Nenhum (raiz)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum (raiz)</SelectItem>
-                      {parentOptions.map(l => (
-                        <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id, true)} ({typeLabels[l.type] || l.type})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={[
+                      { value: "none", label: "Nenhum (raiz)" },
+                      ...parentOptions.map(l => ({
+                        value: l.id,
+                        label: `${getLocationPath(l.id, true)} (${typeLabels[l.type] || l.type})`,
+                      })),
+                    ]}
+                    value={form.parent_id || "none"}
+                    onValueChange={v => setForm({ ...form, parent_id: v === "none" ? "" : v })}
+                    placeholder="Nenhum (raiz)"
+                    searchPlaceholder="Buscar local pai..."
+                  />
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -54,13 +54,14 @@ const ReportsPage = () => {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1">
           <Label className="text-xs">Obra</Label>
-          <Select value={filterObraId} onValueChange={setFilterObraId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as obras</SelectItem>
-              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[{ value: "all", label: "Todas as obras" }, ...activeObras.map(o => ({ value: o.id, label: o.name }))]}
+            value={filterObraId}
+            onValueChange={setFilterObraId}
+            placeholder="Todas"
+            searchPlaceholder="Buscar obra..."
+            className="w-48"
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">De</Label>

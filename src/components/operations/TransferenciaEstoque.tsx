@@ -4,11 +4,12 @@ import { ArrowLeft, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { obras, selectedObraId, getEstoqueByObra, addTransferencia } = useInventory();
+  const { obras, selectedObraId, getEstoqueByObra, addTransferencia, insumos } = useInventory();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -19,6 +20,20 @@ const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
   const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
   const maxQty = selectedItem?.quantity || 0;
   const outrasObras = obras.filter(o => o.id !== selectedObraId);
+
+  const obraOptions = useMemo(() =>
+    outrasObras.map(o => ({ value: o.id, label: o.name })),
+    [outrasObras]
+  );
+
+  const insumoOptions = useMemo(() =>
+    estoqueObra.map(e => ({
+      value: e.insumo_id,
+      label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
+      searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
+    })),
+    [estoqueObra, insumos]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,26 +78,26 @@ const TransferenciaEstoque = ({ onBack }: { onBack: () => void }) => {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         <div className="space-y-2">
           <Label>Obra Destino</Label>
-          <Select value={formData.obraDestinoId} onValueChange={v => setFormData(p => ({ ...p, obraDestinoId: v }))}>
-            <SelectTrigger><SelectValue placeholder="Selecione a obra destino" /></SelectTrigger>
-            <SelectContent>
-              {outrasObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={obraOptions}
+            value={formData.obraDestinoId}
+            onValueChange={v => setFormData(p => ({ ...p, obraDestinoId: v }))}
+            placeholder="Selecione a obra destino"
+            searchPlaceholder="Buscar obra..."
+            emptyMessage="Nenhuma obra encontrada."
+          />
         </div>
 
         <div className="space-y-2">
           <Label>Insumo</Label>
-          <Select value={formData.insumoId} onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}>
-            <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
-            <SelectContent>
-              {estoqueObra.map(e => (
-                <SelectItem key={e.insumo_id} value={e.insumo_id}>
-                  {e.insumo.name} — Disp: {e.quantity} {e.insumo.unit}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={insumoOptions}
+            value={formData.insumoId}
+            onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
+            placeholder="Selecione o insumo"
+            searchPlaceholder="Buscar por nome ou código..."
+            emptyMessage="Nenhum insumo encontrado."
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

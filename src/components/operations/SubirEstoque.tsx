@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import ImportarPlanilha from "@/components/operations/ImportarPlanilha";
 
@@ -19,6 +19,15 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   });
 
   const totalValue = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitValue) || 0);
+
+  const insumoOptions = useMemo(() =>
+    insumos.map(i => ({
+      value: i.id,
+      label: `${i.name} (${i.unit})`,
+      searchTerms: i.code,
+    })),
+    [insumos]
+  );
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,12 +106,14 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
       <form onSubmit={handleManualSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         <div className="space-y-2">
           <Label>Insumo</Label>
-          <Select value={formData.insumoId} onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}>
-            <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
-            <SelectContent>
-              {insumos.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({i.unit})</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={insumoOptions}
+            value={formData.insumoId}
+            onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
+            placeholder="Selecione o insumo"
+            searchPlaceholder="Buscar por nome ou código..."
+            emptyMessage="Nenhum insumo encontrado."
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

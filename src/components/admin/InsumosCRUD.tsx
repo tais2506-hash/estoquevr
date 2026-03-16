@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
@@ -234,13 +235,14 @@ const InsumosCRUD = () => {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap bg-muted/30 rounded-lg p-3">
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas categorias</SelectItem>
-            {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          options={[{ value: "all", label: "Todas categorias" }, ...categories.map(c => ({ value: c, label: c }))]}
+          value={filterCategory}
+          onValueChange={setFilterCategory}
+          placeholder="Categoria"
+          searchPlaceholder="Buscar categoria..."
+          className="w-[180px]"
+        />
         {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="w-4 h-4 mr-1" />Limpar filtros</Button>}
       </div>
 
