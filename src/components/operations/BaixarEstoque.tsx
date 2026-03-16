@@ -127,17 +127,22 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       }
     }
 
-    const localAplicacao = formData.locationId
-      ? getLocationPath(formData.locationId)
-      : formData.localAplicacao || "Kit";
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
+    const localAplicacao = (retroativo && semLocal)
+      ? "Sem histórico de local" + retroLabel
+      : formData.locationId
+        ? getLocationPath(formData.locationId) + retroLabel
+        : (formData.localAplicacao || "Kit") + retroLabel;
+
+    const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
 
     setIsSubmitting(true);
     try {
       for (const ki of kitItms) {
         await addSaida({
           obraId: selectedObraId, insumoId: ki.insumo_id, quantity: ki.quantity * qty,
-          date: formData.date, localAplicacao, responsavel: formData.responsavel,
-          locationId: formData.locationId || undefined,
+          date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+          locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
           kitId: formData.kitId,
           servicePackageId: formData.servicePackageId || undefined,
         });
