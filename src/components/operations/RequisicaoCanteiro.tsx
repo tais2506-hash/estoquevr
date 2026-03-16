@@ -123,7 +123,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         } as any);
         if (error) throw error;
         toast.success("Requisição enviada! Aguardando aprovação do almoxarifado.");
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "" });
+        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
