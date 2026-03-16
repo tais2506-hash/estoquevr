@@ -109,17 +109,11 @@ const ObraSelect = () => {
                       {obra.address}
                     </p>
                   </div>
-                  <div className="flex gap-4 w-full mt-2 pt-2 border-t border-border">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Itens</p>
-                      <p className="text-sm font-semibold text-foreground">{totalItems}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Valor</p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </p>
-                    </div>
+                  <div className="w-full mt-2 pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground">Valor em estoque</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </p>
                   </div>
                 </button>
               );
