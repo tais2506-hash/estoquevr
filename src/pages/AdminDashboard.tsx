@@ -100,6 +100,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
               <TabsTrigger value="kits">Kits</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
+              <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
