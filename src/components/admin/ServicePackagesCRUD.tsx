@@ -102,7 +102,6 @@ const ServicePackagesCRUD = () => {
           <tbody>
             {servicePackages.map(s => (
               <tr key={s.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3 font-mono text-muted-foreground">{s.eap_code || "—"}</td>
                 <td className="p-3 font-medium text-foreground">{s.name}</td>
                 <td className="p-3 text-muted-foreground">{s.unit}</td>
                 <td className="p-3 text-right">
