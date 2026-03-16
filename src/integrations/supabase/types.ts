@@ -231,7 +231,7 @@ export type Database = {
           created_at: string
           date: string
           deleted_at: string | null
-          fornecedor_id: string
+          fornecedor_id: string | null
           fvm_id: string | null
           id: string
           insumo_id: string
@@ -247,7 +247,7 @@ export type Database = {
           created_at?: string
           date: string
           deleted_at?: string | null
-          fornecedor_id: string
+          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id: string
@@ -263,7 +263,7 @@ export type Database = {
           created_at?: string
           date?: string
           deleted_at?: string | null
-          fornecedor_id?: string
+          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id?: string
