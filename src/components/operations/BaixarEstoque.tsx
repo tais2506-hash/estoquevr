@@ -230,6 +230,20 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
 
+        {obraServices.length > 0 && (
+          <div className="space-y-2">
+            <Label>Serviço</Label>
+            <Select value={formData.servicePackageId} onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}>
+              <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
+              <SelectContent>
+                {obraServices.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.eap_code ? `${s.eap_code} - ` : ""}{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Registrando..." : mode === "kit" ? "Baixar Kit" : "Registrar Saída"}
         </Button>
