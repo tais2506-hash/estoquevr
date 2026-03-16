@@ -81,11 +81,16 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     const qty = parseFloat(formData.quantity);
     if (qty > maxQty) { toast.error(`Estoque insuficiente. Disponível: ${maxQty}`); return; }
     if (!formData.insumoId || !qty || !formData.responsavel) { toast.error("Preencha todos os campos obrigatórios"); return; }
-    if (requiresLocation && !formData.locationId) { toast.error("Local é obrigatório para este insumo (rastreabilidade)"); return; }
+    if (requiresLocation && !formData.locationId && !(retroativo && semLocal)) { toast.error("Local é obrigatório para este insumo (rastreabilidade)"); return; }
 
-    const localAplicacao = formData.locationId
-      ? getLocationPath(formData.locationId)
-      : formData.localAplicacao || "Não especificado";
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
+    const localAplicacao = (retroativo && semLocal)
+      ? "Sem histórico de local" + retroLabel
+      : formData.locationId
+        ? getLocationPath(formData.locationId) + retroLabel
+        : (formData.localAplicacao || "Não especificado") + retroLabel;
+
+    const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
 
     setIsSubmitting(true);
     try {
