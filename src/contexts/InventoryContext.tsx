@@ -217,6 +217,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     queryClient.invalidateQueries({ queryKey: ["kits"] });
     queryClient.invalidateQueries({ queryKey: ["kit_items"] });
     queryClient.invalidateQueries({ queryKey: ["locations"] });
+    queryClient.invalidateQueries({ queryKey: ["service_packages"] });
   }, [queryClient]);
 
   const updateEstoque = useCallback(async (obraId: string, insumoId: string, qtyDelta: number, valueDelta: number) => {
