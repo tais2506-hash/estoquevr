@@ -2,9 +2,12 @@ import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -39,26 +42,94 @@ const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "second
 const ObraDashboard = () => {
   const [view, setView] = useState<OperationView>("menu");
   const [movsLimit, setMovsLimit] = useState(20);
-  const { getSelectedObra, getEstoqueByObra, selectedObraId, movimentacoes, insumos, undoInventarioAjuste } = useInventory();
+  const [estoqueSearch, setEstoqueSearch] = useState("");
+  const [estoqueCategory, setEstoqueCategory] = useState("");
+  const [searchOutrasObras, setSearchOutrasObras] = useState("");
+  const [showOutrasObras, setShowOutrasObras] = useState(false);
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste } = useInventory();
   const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
 
-  const movsObra = useMemo(() => {
-    if (!selectedObraId) return [];
-    return movimentacoes
-      .filter(m => m.obra_id === selectedObraId)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));
-  }, [movimentacoes, selectedObraId]);
+  // Query movimentações filtered by obra_id server-side (avoids 1000 row limit)
+  const { data: movsObra = [] } = useQuery({
+    queryKey: ["movimentacoes_obra", selectedObraId],
+    queryFn: async () => {
+      if (!selectedObraId) return [];
+      const { data, error } = await supabase
+        .from("movimentacoes")
+        .select("*")
+        .eq("obra_id", selectedObraId)
+        .is("deleted_at", null)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!selectedObraId,
+  });
 
-  if (!obra || !selectedObraId) { navigate("/obras"); return null; }
-
-  const estoqueObra = getEstoqueByObra(selectedObraId);
+  const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
   const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
 
+  // Categories for filter
+  const categories = useMemo(() => {
+    const cats = new Set(estoqueObra.map(e => e.insumo.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [estoqueObra]);
+
+  // Filtered & sorted estoque
+  const filteredEstoque = useMemo(() => {
+    let items = estoqueObra;
+    if (estoqueCategory) items = items.filter(e => e.insumo.category === estoqueCategory);
+    if (estoqueSearch) {
+      const words = estoqueSearch.toLowerCase().split(/\s+/).filter(Boolean);
+      items = items.filter(e => {
+        const haystack = `${e.insumo.code} ${e.insumo.name} ${e.insumo.category}`.toLowerCase();
+        return words.every(w => haystack.includes(w));
+      });
+    }
+    return items.sort((a, b) => {
+      const catCmp = (a.insumo.category || "").localeCompare(b.insumo.category || "");
+      if (catCmp !== 0) return catCmp;
+      return a.insumo.name.localeCompare(b.insumo.name);
+    });
+  }, [estoqueObra, estoqueSearch, estoqueCategory]);
+
+  // Group by category for display
+  const groupedEstoque = useMemo(() => {
+    const groups: Record<string, typeof filteredEstoque> = {};
+    filteredEstoque.forEach(item => {
+      const cat = item.insumo.category || "Sem Categoria";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+    return groups;
+  }, [filteredEstoque]);
+
+  // Search insumo across other obras
+  const outrasObrasResults = useMemo(() => {
+    if (!searchOutrasObras || searchOutrasObras.length < 2) return [];
+    const words = searchOutrasObras.toLowerCase().split(/\s+/).filter(Boolean);
+    return estoque
+      .filter(e => e.obra_id !== selectedObraId && e.quantity > 0)
+      .map(e => {
+        const ins = insumos.find(i => i.id === e.insumo_id);
+        const ob = obras.find(o => o.id === e.obra_id);
+        if (!ins || !ob) return null;
+        const haystack = `${ins.code} ${ins.name} ${ins.category}`.toLowerCase();
+        if (!words.every(w => haystack.includes(w))) return null;
+        return { ...e, insumo: ins, obra: ob };
+      })
+      .filter(Boolean) as any[];
+  }, [searchOutrasObras, estoque, insumos, obras, selectedObraId]);
+
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+
+  if (!obra || !selectedObraId) { navigate("/obras"); return null; }
 
   const renderOperation = () => {
     switch (view) {
@@ -87,7 +158,7 @@ const ObraDashboard = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-6 text-sm">
-              <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems}</p></div>
+              <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="text-center"><p className="text-muted-foreground text-xs">Valor Imobilizado</p><p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
             <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}><LogOut className="w-4 h-4" /></Button>
@@ -99,7 +170,7 @@ const ObraDashboard = () => {
         {view === "menu" ? (
           <div className="animate-fade-in space-y-8">
             <div className="grid grid-cols-2 gap-3 sm:hidden">
-              <div className="stat-card"><p className="text-xs text-muted-foreground">Total Itens</p><p className="text-xl font-bold text-foreground">{totalItems}</p></div>
+              <div className="stat-card"><p className="text-xs text-muted-foreground">Total Itens</p><p className="text-xl font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="stat-card"><p className="text-xs text-muted-foreground">Valor Imobilizado</p><p className="text-xl font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
 
@@ -116,10 +187,36 @@ const ObraDashboard = () => {
               </div>
             </div>
 
+            {/* ==================== ESTOQUE ATUAL ==================== */}
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5 text-muted-foreground" /> Estoque Atual
+                <span className="text-sm font-normal text-muted-foreground">({filteredEstoque.length} itens)</span>
               </h3>
+
+              {/* Search + Category filter */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={estoqueSearch}
+                    onChange={e => setEstoqueSearch(e.target.value)}
+                    placeholder="Buscar por nome, código ou categoria..."
+                    className="pl-9"
+                  />
+                </div>
+                {categories.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button type="button" variant={estoqueCategory === "" ? "default" : "outline"} size="sm" className="h-9 text-xs"
+                      onClick={() => setEstoqueCategory("")}>Todas</Button>
+                    {categories.map(cat => (
+                      <Button key={cat} type="button" variant={estoqueCategory === cat ? "default" : "outline"} size="sm" className="h-9 text-xs"
+                        onClick={() => setEstoqueCategory(prev => prev === cat ? "" : cat)}>{cat}</Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -132,25 +229,90 @@ const ObraDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {estoqueObra.map((item) => (
-                        <tr key={item.insumo_id} className="border-b border-border/50 last:border-0">
-                          <td className="p-3"><p className="font-medium text-foreground">{item.insumo.name}</p><p className="text-xs text-muted-foreground">{item.insumo.category}</p></td>
-                          <td className="p-3 text-right font-mono text-foreground">{item.quantity} {item.insumo.unit}</td>
-                          <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">{item.average_unit_cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                          <td className="p-3 text-right font-mono font-medium text-foreground">{item.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                        </tr>
+                      {Object.entries(groupedEstoque).map(([category, items]) => (
+                        <>{/* Category header */}
+                          <tr key={`cat-${category}`} className="bg-muted/30">
+                            <td colSpan={4} className="px-3 py-2">
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({items.length})</span>
+                            </td>
+                          </tr>
+                          {items.map((item) => (
+                            <tr key={item.insumo_id} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                              <td className="p-3">
+                                <p className="font-medium text-foreground">{item.insumo.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{item.insumo.code}</p>
+                              </td>
+                              <td className="p-3 text-right font-mono text-foreground whitespace-nowrap">{item.quantity.toLocaleString("pt-BR")} {item.insumo.unit}</td>
+                              <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">{item.average_unit_cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td className="p-3 text-right font-mono font-medium text-foreground">{item.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                            </tr>
+                          ))}
+                        </>
                       ))}
-                      {estoqueObra.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum item no estoque</td></tr>}
+                      {filteredEstoque.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum item encontrado</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
 
-            {/* Histórico de Movimentações */}
+            {/* ==================== BUSCAR EM OUTRAS OBRAS ==================== */}
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2 cursor-pointer" onClick={() => setShowOutrasObras(!showOutrasObras)}>
+                <Globe className="w-5 h-5 text-muted-foreground" /> Buscar Insumo em Outras Obras
+                <span className="text-xs font-normal text-muted-foreground">{showOutrasObras ? "▲" : "▼"}</span>
+              </h3>
+              {showOutrasObras && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={searchOutrasObras}
+                      onChange={e => setSearchOutrasObras(e.target.value)}
+                      placeholder="Digite o nome ou código do insumo..."
+                      className="pl-9"
+                    />
+                  </div>
+                  {searchOutrasObras.length >= 2 && (
+                    <div className="bg-card rounded-xl border border-border overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/50">
+                              <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
+                              <th className="text-left p-3 font-medium text-muted-foreground">Obra</th>
+                              <th className="text-right p-3 font-medium text-muted-foreground">Disponível</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {outrasObrasResults.map((r: any) => (
+                              <tr key={`${r.obra_id}-${r.insumo_id}`} className="border-b border-border/50 last:border-0">
+                                <td className="p-3">
+                                  <p className="font-medium text-foreground">{r.insumo.name}</p>
+                                  <p className="text-xs text-muted-foreground font-mono">{r.insumo.code} · {r.insumo.category}</p>
+                                </td>
+                                <td className="p-3 text-foreground">{r.obra.name}</td>
+                                <td className="p-3 text-right font-mono font-medium text-foreground">{r.quantity.toLocaleString("pt-BR")} {r.insumo.unit}</td>
+                              </tr>
+                            ))}
+                            {outrasObrasResults.length === 0 && (
+                              <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">Nenhum insumo encontrado em outras obras</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ==================== HISTÓRICO DE MOVIMENTAÇÕES ==================== */}
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <History className="w-5 h-5 text-muted-foreground" /> Histórico de Movimentações
+                <span className="text-sm font-normal text-muted-foreground">({movsObra.length})</span>
               </h3>
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="overflow-x-auto">
@@ -166,7 +328,7 @@ const ObraDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {movsToShow.map((mov) => {
+                      {movsToShow.map((mov: any) => {
                         const info = MOV_TYPE_MAP[mov.type] || { label: mov.type, variant: "secondary" as const };
                         return (
                           <tr key={mov.id} className="border-b border-border/50 last:border-0">
