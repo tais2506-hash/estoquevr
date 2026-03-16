@@ -305,12 +305,14 @@ const LocationsCRUD = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Obra</Label>
-                  <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })} disabled={!!editing}>
-                    <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                    <SelectContent>
-                      {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={activeObras.map(o => ({ value: o.id, label: o.name }))}
+                    value={form.obra_id}
+                    onValueChange={v => setForm({ ...form, obra_id: v, parent_id: "" })}
+                    placeholder="Selecione a obra"
+                    searchPlaceholder="Buscar obra..."
+                    disabled={!!editing}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
