@@ -14,7 +14,7 @@ interface ImportResult {
   errors: string[];
 }
 
-const PLACEHOLDER_FORNECEDOR = "00000000-0000-0000-0000-000000000000";
+
 
 const ImportarPlanilha = ({ onBack }: { onBack: () => void }) => {
   const { selectedObraId, insumos, obras, refetchAll } = useInventory();
