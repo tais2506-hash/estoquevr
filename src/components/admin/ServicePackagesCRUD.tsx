@@ -78,15 +78,9 @@ const ServicePackagesCRUD = () => {
                 <Label>Nome do Serviço <span className="text-destructive">*</span></Label>
                 <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Alvenaria, Reboco, Elétrica" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Código EAP</Label>
-                  <Input value={form.eap_code} onChange={e => setForm(p => ({ ...p, eap_code: e.target.value }))} placeholder="Ex: 3.1.2" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unidade</Label>
-                  <Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="Ex: m², un" />
-                </div>
+              <div className="space-y-2">
+                <Label>Unidade</Label>
+                <Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="Ex: m², un" />
               </div>
               <Button onClick={handleSave} className="w-full">
                 {editingId ? "Salvar Alterações" : "Cadastrar Serviço"}
