@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
@@ -42,6 +43,33 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     }
     return parts.join(" > ");
   };
+
+  const insumoOptions = useMemo(() =>
+    estoqueObra.map(e => ({
+      value: e.insumo_id,
+      label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
+      searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
+    })),
+    [estoqueObra, insumos]
+  );
+
+  const kitOptions = useMemo(() =>
+    kits.map(k => {
+      const count = kitItems.filter(ki => ki.kit_id === k.id).length;
+      return { value: k.id, label: `${k.name} (${count} insumos)` };
+    }),
+    [kits, kitItems]
+  );
+
+  const locationOptions = useMemo(() =>
+    obraLocations.map(l => ({ value: l.id, label: getLocationPath(l.id) })),
+    [obraLocations]
+  );
+
+  const serviceOptions = useMemo(() =>
+    obraServices.map(s => ({ value: s.id, label: s.name })),
+    [obraServices]
+  );
 
   const handleSubmitInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,16 +185,14 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <>
             <div className="space-y-2">
               <Label>Insumo</Label>
-              <Select value={formData.insumoId} onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o insumo" /></SelectTrigger>
-                <SelectContent>
-                  {estoqueObra.map(e => (
-                    <SelectItem key={e.insumo_id} value={e.insumo_id}>
-                      {e.insumo.name} — Disp: {e.quantity} {e.insumo.unit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={insumoOptions}
+                value={formData.insumoId}
+                onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
+                placeholder="Selecione o insumo"
+                searchPlaceholder="Buscar por nome ou código..."
+                emptyMessage="Nenhum insumo encontrado."
+              />
             </div>
             {selectedItem && (
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
@@ -179,15 +205,14 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         ) : (
           <div className="space-y-2">
             <Label>Kit</Label>
-            <Select value={formData.kitId} onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione o kit" /></SelectTrigger>
-              <SelectContent>
-                {kits.map(k => {
-                  const count = kitItems.filter(ki => ki.kit_id === k.id).length;
-                  return <SelectItem key={k.id} value={k.id}>{k.name} ({count} insumos)</SelectItem>;
-                })}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={kitOptions}
+              value={formData.kitId}
+              onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
+              placeholder="Selecione o kit"
+              searchPlaceholder="Buscar kit..."
+              emptyMessage="Nenhum kit encontrado."
+            />
           </div>
         )}
 
@@ -206,14 +231,14 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         {obraLocations.length > 0 && (
           <div className="space-y-2">
             <Label>Local {requiresLocation && <span className="text-destructive">*</span>}</Label>
-            <Select value={formData.locationId} onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione o local" /></SelectTrigger>
-              <SelectContent>
-                {obraLocations.map(l => (
-                  <SelectItem key={l.id} value={l.id}>{getLocationPath(l.id)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={locationOptions}
+              value={formData.locationId}
+              onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
+              placeholder="Selecione o local"
+              searchPlaceholder="Buscar local..."
+              emptyMessage="Nenhum local encontrado."
+            />
           </div>
         )}
 
@@ -233,14 +258,14 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         {obraServices.length > 0 && (
           <div className="space-y-2">
             <Label>Serviço</Label>
-            <Select value={formData.servicePackageId} onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}>
-              <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
-              <SelectContent>
-                {obraServices.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.eap_code ? `${s.eap_code} - ` : ""}{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={serviceOptions}
+              value={formData.servicePackageId}
+              onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}
+              placeholder="Selecione o serviço"
+              searchPlaceholder="Buscar serviço..."
+              emptyMessage="Nenhum serviço encontrado."
+            />
           </div>
         )}
 
