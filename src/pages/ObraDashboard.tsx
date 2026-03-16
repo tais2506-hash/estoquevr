@@ -70,9 +70,7 @@ const ObraDashboard = () => {
     enabled: !!selectedObraId,
   });
 
-  if (!obra || !selectedObraId) { navigate("/obras"); return null; }
-
-  const estoqueObra = getEstoqueByObra(selectedObraId);
+  const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const totalValue = estoqueObra.reduce((acc, e) => acc + e.total_value, 0);
   const totalItems = estoqueObra.reduce((acc, e) => acc + e.quantity, 0);
 
@@ -130,6 +128,8 @@ const ObraDashboard = () => {
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+
+  if (!obra || !selectedObraId) { navigate("/obras"); return null; }
 
   const renderOperation = () => {
     switch (view) {
