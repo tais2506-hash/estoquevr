@@ -10,6 +10,7 @@ import InsumosCRUD from "@/components/admin/InsumosCRUD";
 import KitsCRUD from "@/components/admin/KitsCRUD";
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import UserManagement from "@/components/admin/UserManagement";
+import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
 import ReportsPage from "@/components/reports/ReportsPage";
