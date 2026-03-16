@@ -49,13 +49,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     return parts.join(" > ");
   };
 
+  const categories = useMemo(() => {
+    const cats = new Set(estoqueObra.map(e => e.insumo.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [estoqueObra]);
+
   const insumoOptions = useMemo(() =>
-    estoqueObra.map(e => ({
-      value: e.insumo_id,
-      label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
-      searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
-    })),
-    [estoqueObra, insumos]
+    estoqueObra
+      .filter(e => !categoryFilter || e.insumo.category === categoryFilter)
+      .map(e => {
+        const ins = insumos.find(i => i.id === e.insumo_id);
+        return {
+          value: e.insumo_id,
+          label: `[${ins?.code}] ${e.insumo.name} — ${e.quantity} ${e.insumo.unit}`,
+          searchTerms: `${ins?.code || ""} ${ins?.category || ""} ${e.insumo.name}`,
+          subtitle: ins?.category || "",
+        };
+      }),
+    [estoqueObra, insumos, categoryFilter]
   );
 
   const kitOptions = useMemo(() =>
@@ -64,11 +75,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       return { value: k.id, label: `${k.name} (${count} insumos)` };
     }),
     [kits, kitItems]
-  );
-
-  const locationOptions = useMemo(() =>
-    obraLocations.map(l => ({ value: l.id, label: getLocationPath(l.id) })),
-    [obraLocations]
   );
 
   const serviceOptions = useMemo(() =>
