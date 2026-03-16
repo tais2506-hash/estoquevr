@@ -34,7 +34,7 @@ const ServicePackagesCRUD = () => {
       toast.success("Serviço atualizado!");
     } else {
       const { error } = await supabase.from("service_packages").insert({
-        name: form.name, eap_code: form.eap_code, unit: form.unit,
+        name: form.name, unit: form.unit,
       } as any);
       if (error) { toast.error("Erro ao criar"); return; }
       toast.success("Serviço criado!");
