@@ -102,6 +102,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           date: formData.date, localAplicacao, responsavel: formData.responsavel,
           locationId: formData.locationId || undefined,
           kitId: formData.kitId,
+          servicePackageId: formData.servicePackageId || undefined,
         });
       }
       toast.success(`Kit baixado! ${kitItms.length} insumos consumidos.`);
