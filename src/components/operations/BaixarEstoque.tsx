@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations } = useInventory();
+  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages } = useInventory();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "",
+    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
