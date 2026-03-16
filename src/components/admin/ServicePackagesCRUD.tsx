@@ -12,10 +12,10 @@ const ServicePackagesCRUD = () => {
   const { servicePackages, refetchAll } = useInventory();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", eap_code: "", unit: "un" });
+  const [form, setForm] = useState({ name: "", unit: "un" });
 
   const resetForm = () => {
-    setForm({ name: "", eap_code: "", unit: "un" });
+    setForm({ name: "", unit: "un" });
     setEditingId(null);
     setOpen(false);
   };
@@ -28,13 +28,13 @@ const ServicePackagesCRUD = () => {
 
     if (editingId) {
       const { error } = await supabase.from("service_packages").update({
-        name: form.name, eap_code: form.eap_code, unit: form.unit,
+        name: form.name, unit: form.unit,
       }).eq("id", editingId);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Serviço atualizado!");
     } else {
       const { error } = await supabase.from("service_packages").insert({
-        name: form.name, eap_code: form.eap_code, unit: form.unit,
+        name: form.name, unit: form.unit,
       } as any);
       if (error) { toast.error("Erro ao criar"); return; }
       toast.success("Serviço criado!");
@@ -44,7 +44,7 @@ const ServicePackagesCRUD = () => {
   };
 
   const handleEdit = (s: typeof servicePackages[0]) => {
-    setForm({ name: s.name, eap_code: s.eap_code, unit: s.unit });
+    setForm({ name: s.name, unit: s.unit });
     setEditingId(s.id);
     setOpen(true);
   };
@@ -78,15 +78,9 @@ const ServicePackagesCRUD = () => {
                 <Label>Nome do Serviço <span className="text-destructive">*</span></Label>
                 <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Alvenaria, Reboco, Elétrica" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Código EAP</Label>
-                  <Input value={form.eap_code} onChange={e => setForm(p => ({ ...p, eap_code: e.target.value }))} placeholder="Ex: 3.1.2" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unidade</Label>
-                  <Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="Ex: m², un" />
-                </div>
+              <div className="space-y-2">
+                <Label>Unidade</Label>
+                <Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="Ex: m², un" />
               </div>
               <Button onClick={handleSave} className="w-full">
                 {editingId ? "Salvar Alterações" : "Cadastrar Serviço"}
@@ -100,7 +94,6 @@ const ServicePackagesCRUD = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              <th className="text-left p-3 font-medium text-muted-foreground">Código EAP</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
@@ -109,7 +102,6 @@ const ServicePackagesCRUD = () => {
           <tbody>
             {servicePackages.map(s => (
               <tr key={s.id} className="border-b border-border/50 last:border-0">
-                <td className="p-3 font-mono text-muted-foreground">{s.eap_code || "—"}</td>
                 <td className="p-3 font-medium text-foreground">{s.name}</td>
                 <td className="p-3 text-muted-foreground">{s.unit}</td>
                 <td className="p-3 text-right">
@@ -125,7 +117,7 @@ const ServicePackagesCRUD = () => {
               </tr>
             ))}
             {servicePackages.length === 0 && (
-              <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum serviço cadastrado</td></tr>
+              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">Nenhum serviço cadastrado</td></tr>
             )}
           </tbody>
         </table>
