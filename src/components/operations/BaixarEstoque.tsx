@@ -235,14 +235,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
         {mode === "insumo" ? (
           <>
+            {categories.length > 1 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Filtrar por categoria</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button type="button" variant={categoryFilter === "" ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                    onClick={() => setCategoryFilter("")}>Todas</Button>
+                  {categories.map(cat => (
+                    <Button key={cat} type="button" variant={categoryFilter === cat ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                      onClick={() => { setCategoryFilter(cat); setFormData(p => ({ ...p, insumoId: "" })); }}>{cat}</Button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Insumo</Label>
               <SearchableSelect
                 options={insumoOptions}
                 value={formData.insumoId}
                 onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
-                placeholder="Selecione o insumo"
-                searchPlaceholder="Buscar por nome ou código..."
+                placeholder="Buscar por nome, código ou categoria..."
+                searchPlaceholder="Ex: arg massa, 01.001, hidráulica..."
                 emptyMessage="Nenhum insumo encontrado."
               />
             </div>
@@ -250,6 +263,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
                 <span className="text-muted-foreground">Disponível: </span>
                 <span className="font-bold text-foreground">{maxQty} {selectedItem.insumo.unit}</span>
+                {selectedInsumo?.category && <span className="ml-2 text-xs text-muted-foreground">({selectedInsumo.category})</span>}
                 {requiresLocation && <span className="ml-2 text-xs text-warning">⚠ Rastreabilidade obrigatória</span>}
               </div>
             )}
