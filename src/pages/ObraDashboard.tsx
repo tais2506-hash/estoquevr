@@ -2,18 +2,20 @@ import { useState } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SubirEstoque from "@/components/operations/SubirEstoque";
 import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
 import InventarioConferencia from "@/components/operations/InventarioConferencia";
+import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success" },
   { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive" },
+  { key: "requisicao" as const, label: "Requisição de Canteiro", icon: FileText, description: "Solicitar materiais online", color: "text-amber-500" },
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary" },
 ];
