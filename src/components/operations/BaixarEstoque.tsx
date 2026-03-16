@@ -299,17 +299,15 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <p className="text-xs text-muted-foreground italic">📅 Data não informada — será registrado com a data de hoje.</p>
         )}
 
-        {/* Location */}
+        {/* Location - cascading */}
         {!(retroativo && semLocal) && obraLocations.length > 0 && (
           <div className="space-y-2">
             <Label>Local {requiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
-            <SearchableSelect
-              options={locationOptions}
+            <CascadingLocationSelect
+              locations={obraLocations}
               value={formData.locationId}
               onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              placeholder="Selecione o local"
-              searchPlaceholder="Buscar local..."
-              emptyMessage="Nenhum local encontrado."
+              required={!!requiresLocation}
             />
           </div>
         )}
