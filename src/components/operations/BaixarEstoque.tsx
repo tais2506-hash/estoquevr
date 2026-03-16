@@ -26,8 +26,8 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     [locations, selectedObraId]
   );
   const obraServices = useMemo(() =>
-    servicePackages.filter(s => s.obra_id === selectedObraId && s.status === "ativo"),
-    [servicePackages, selectedObraId]
+    servicePackages.filter(s => s.status === "ativo"),
+    [servicePackages]
   );
 
   const selectedInsumo = insumos.find(i => i.id === formData.insumoId);

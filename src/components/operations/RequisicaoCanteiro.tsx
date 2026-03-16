@@ -50,7 +50,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const obraLocations = useMemo(() => locations.filter(l => l.obra_id === selectedObraId), [locations, selectedObraId]);
-  const obraServices = useMemo(() => servicePackages.filter(s => s.obra_id === selectedObraId && s.status === "ativo"), [servicePackages, selectedObraId]);
+  const obraServices = useMemo(() => servicePackages.filter(s => s.status === "ativo"), [servicePackages]);
 
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ["requisicoes", selectedObraId],

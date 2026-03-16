@@ -49,7 +49,7 @@ type LocationRow = {
   deleted_at: string | null; created_at: string; updated_at: string;
 };
 type ServicePackageRow = {
-  id: string; obra_id: string; name: string; eap_code: string; unit: string;
+  id: string; obra_id: string | null; name: string; eap_code: string; unit: string;
   status: string; deleted_at: string | null; created_at: string; updated_at: string;
 };
 
