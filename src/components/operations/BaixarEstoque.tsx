@@ -96,8 +96,10 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     try {
       await addSaida({
         obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty,
-        date: formData.date, localAplicacao, responsavel: formData.responsavel,
-        locationId: formData.locationId || undefined,
+        date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+        locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
+        servicePackageId: formData.servicePackageId || undefined,
+      });
         servicePackageId: formData.servicePackageId || undefined,
       });
       toast.success("Saída registrada!");
