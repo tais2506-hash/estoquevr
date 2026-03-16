@@ -117,7 +117,7 @@ const ServicePackagesCRUD = () => {
               </tr>
             ))}
             {servicePackages.length === 0 && (
-              <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum serviço cadastrado</td></tr>
+              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">Nenhum serviço cadastrado</td></tr>
             )}
           </tbody>
         </table>
