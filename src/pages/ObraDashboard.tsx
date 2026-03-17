@@ -200,7 +200,7 @@ const ObraDashboard = () => {
               <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="text-center"><p className="text-muted-foreground text-xs">Valor Imobilizado</p><p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
-            {isAdmin && (
+            {hasPermission("estoque.zerar") && (
               <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" className="hidden sm:flex">
