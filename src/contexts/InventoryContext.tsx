@@ -78,6 +78,10 @@ interface InventoryContextType {
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
   undoInventarioAjuste: (movimentacaoId: string) => Promise<void>;
+  undoEntrada: (movimentacaoId: string) => Promise<void>;
+  undoSaida: (movimentacaoId: string) => Promise<void>;
+  undoTransferencia: (movimentacaoId: string) => Promise<void>;
+  resetEstoqueObra: (obraId: string) => Promise<void>;
 
   refetchAll: () => void;
 }
