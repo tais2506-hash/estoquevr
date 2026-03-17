@@ -96,10 +96,11 @@ const AdminDashboard = () => {
             <TabsList className="inline-flex w-auto">
               <TabsTrigger value="geral">Visão Geral</TabsTrigger>
               <TabsTrigger value="por-obra">Por Obra</TabsTrigger>
+              <TabsTrigger value="dashboard-kits">Kits</TabsTrigger>
               <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
               <TabsTrigger value="obras">Obras</TabsTrigger>
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
-              <TabsTrigger value="kits">Kits</TabsTrigger>
+              <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
               <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
