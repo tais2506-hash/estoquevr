@@ -16,6 +16,7 @@ import DashboardGeral from "@/components/dashboard/DashboardGeral";
 import DashboardKits from "@/components/dashboard/DashboardKits";
 import ReportsPage from "@/components/reports/ReportsPage";
 import PermissionProfilesCRUD from "@/components/admin/PermissionProfilesCRUD";
+import ConfiguracoesCRUD from "@/components/admin/ConfiguracoesCRUD";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
@@ -109,6 +110,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
               <TabsTrigger value="perfis">Perfis</TabsTrigger>
+              <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
@@ -124,6 +126,7 @@ const AdminDashboard = () => {
           <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>
           <TabsContent value="usuarios"><UserManagement /></TabsContent>
           <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>
+          <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>
         </Tabs>
       </main>
     </div>
