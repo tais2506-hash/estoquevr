@@ -39,7 +39,7 @@ interface KitGroup {
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems, servicePackages, refetchAll } = useInventory();
+  const { selectedObraId, insumos, getEstoqueByObra, locations, addSaida, kits, kitItems } = useInventory();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"nova" | "pendentes" | "historico">("nova");
