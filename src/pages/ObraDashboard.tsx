@@ -37,6 +37,7 @@ const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "second
   transferencia_saida: { label: "Transf. Saída", variant: "destructive" },
   devolucao: { label: "Devolução", variant: "secondary" },
   ajuste_inventario: { label: "Ajuste Inventário", variant: "outline" },
+  exclusao_global: { label: "Exclusão Global", variant: "destructive" },
 };
 
 const ObraDashboard = () => {
