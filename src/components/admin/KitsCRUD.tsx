@@ -25,7 +25,7 @@ const KitsCRUD = () => {
 
   const filtered = useMemo(() => {
     let result = kits;
-    if (selectedObraFilter) result = result.filter(k => k.obra_id === selectedObraFilter);
+    if (selectedObraFilter && selectedObraFilter !== "all") result = result.filter(k => k.obra_id === selectedObraFilter);
     if (search) result = result.filter(k => k.name.toLowerCase().includes(search.toLowerCase()));
     return result;
   }, [kits, search, selectedObraFilter]);
