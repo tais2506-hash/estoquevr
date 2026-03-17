@@ -58,7 +58,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const obraLocations = useMemo(() => locations.filter(l => l.obra_id === selectedObraId), [locations, selectedObraId]);
   const obraKits = useMemo(() => kits.filter(k => k.obra_id === selectedObraId), [kits, selectedObraId]);
 
-  const { data: requisicoes = [], isLoading } = useQuery({
+  const { data: requisicoes = [] } = useQuery({
     queryKey: ["requisicoes", selectedObraId],
     queryFn: async () => {
       if (!selectedObraId) return [];
