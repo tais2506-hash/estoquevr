@@ -15,6 +15,14 @@ import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
 import DashboardKits from "@/components/dashboard/DashboardKits";
 import ReportsPage from "@/components/reports/ReportsPage";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
