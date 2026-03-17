@@ -29,24 +29,8 @@ const AdminDashboard = () => {
     );
   }
 
-  const handleResetEstoque = async () => {
-    if (resetConfirmText !== "EXCLUIR TUDO") return;
-    setIsResetting(true);
-    try {
-      // Delete all estoque records
-      const { error: estoqueErr } = await supabase.from("estoque").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      if (estoqueErr) throw estoqueErr;
 
-      toast.success("Estoque global excluído com sucesso. Registros de movimentações foram mantidos.");
-      setResetConfirmText("");
-      setResetDialogOpen(false);
-      refetchAll();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao excluir estoque");
-    } finally {
-      setIsResetting(false);
-    }
-  };
+
 
   const handleExport = (type: string) => {
     const data = type === "estoque"
