@@ -257,7 +257,72 @@ const ObraDashboard = () => {
               </div>
             </div>
 
-            {/* ==================== BUSCAR EM OUTRAS OBRAS ==================== */}
+            {/* ==================== ESTOQUE DE KITS ==================== */}
+            {(() => {
+              const obraKits = kits.filter(k => k.obra_id === selectedObraId);
+              if (obraKits.length === 0) return null;
+              return (
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-muted-foreground" /> Estoque de Kits
+                    <span className="text-sm font-normal text-muted-foreground">({obraKits.length} kits)</span>
+                  </h3>
+                  <div className="bg-card rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/50">
+                          <th className="text-left p-3 font-medium text-muted-foreground">Kit</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Composição</th>
+                          <th className="text-right p-3 font-medium text-muted-foreground">Disponíveis</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {obraKits.map(kit => {
+                          const items = kitItems.filter(ki => ki.kit_id === kit.id);
+                          let minKits = items.length > 0 ? Infinity : 0;
+                          items.forEach(ki => {
+                            const est = estoqueObra.find(e => e.insumo_id === ki.insumo_id);
+                            const available = est ? Math.floor(est.quantity / ki.quantity) : 0;
+                            minKits = Math.min(minKits, available);
+                          });
+                          if (minKits === Infinity) minKits = 0;
+                          return (
+                            <tr key={kit.id} className="border-b border-border/50 last:border-0">
+                              <td className="p-3">
+                                <p className="font-medium text-foreground">{kit.name}</p>
+                                {kit.description && <p className="text-xs text-muted-foreground">{kit.description}</p>}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {items.map(ki => {
+                                    const ins = insumos.find(i => i.id === ki.insumo_id);
+                                    if (!ins) return null;
+                                    const est = estoqueObra.find(e => e.insumo_id === ki.insumo_id);
+                                    const disp = est?.quantity || 0;
+                                    const insuf = disp < ki.quantity;
+                                    return (
+                                      <span key={ki.id} className={`text-xs px-2 py-0.5 rounded-full ${insuf ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
+                                        {ins.name} x{ki.quantity} {ins.unit} {insuf && "⚠️"}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <span className={`font-mono font-bold text-lg ${minKits === 0 ? "text-destructive" : "text-emerald-600"}`}>
+                                  {minKits}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2 cursor-pointer" onClick={() => setShowOutrasObras(!showOutrasObras)}>
                 <Globe className="w-5 h-5 text-muted-foreground" /> Buscar Insumo em Outras Obras
