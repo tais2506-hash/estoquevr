@@ -245,8 +245,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       obra_id: data.obraId, insumo_id: data.insumoId, type: data.type as any,
       quantity: data.quantity, date: data.date, description: data.description,
       reference_id: data.referenceId || null, user_id: userId,
+      user_name: user?.name || "",
     });
-  }, [userId]);
+  }, [userId, user]);
 
   const addAuditLog = useCallback(async (action: string, tableName: string, recordId?: string, obraId?: string, oldValue?: any, newValue?: any) => {
     if (!userId) return;
