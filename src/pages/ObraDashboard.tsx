@@ -46,7 +46,7 @@ const ObraDashboard = () => {
   const [estoqueCategory, setEstoqueCategory] = useState("");
   const [searchOutrasObras, setSearchOutrasObras] = useState("");
   const [showOutrasObras, setShowOutrasObras] = useState(false);
-  const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste } = useInventory();
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, kits, kitItems } = useInventory();
   const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
