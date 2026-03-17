@@ -78,6 +78,10 @@ interface InventoryContextType {
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
   undoInventarioAjuste: (movimentacaoId: string) => Promise<void>;
+  undoEntrada: (movimentacaoId: string) => Promise<void>;
+  undoSaida: (movimentacaoId: string) => Promise<void>;
+  undoTransferencia: (movimentacaoId: string) => Promise<void>;
+  resetEstoqueObra: (obraId: string) => Promise<void>;
 
   refetchAll: () => void;
 }
@@ -365,12 +369,90 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, movimentacoes, estoque, updateEstoque, addAuditLog, refetchAll]);
 
+  const undoEntrada = useCallback(async (movimentacaoId: string) => {
+    if (!userId) return;
+    const mov = movimentacoes.find(m => m.id === movimentacaoId && m.type === "entrada");
+    if (!mov) throw new Error("Movimentação de entrada não encontrada");
+    const refId = mov.reference_id;
+    if (!refId) throw new Error("Referência da entrada não encontrada");
+
+    const { data: entrada, error } = await supabase.from("entradas").select("*").eq("id", refId).single();
+    if (error || !entrada) throw new Error("Registro de entrada não encontrado");
+
+    const insumo = insumos.find(i => i.id === mov.insumo_id);
+    if (!insumo?.material_nao_estocavel) {
+      await updateEstoque(mov.obra_id, mov.insumo_id, -entrada.quantity, -entrada.total_value);
+    }
+    await supabase.from("entradas").update({ deleted_at: new Date().toISOString() }).eq("id", refId);
+    await supabase.from("movimentacoes").update({ deleted_at: new Date().toISOString() }).eq("id", movimentacaoId);
+    await addAuditLog("desfazer_entrada", "entradas", refId, mov.obra_id, entrada, null);
+    refetchAll();
+  }, [userId, movimentacoes, insumos, updateEstoque, addAuditLog, refetchAll]);
+
+  const undoSaida = useCallback(async (movimentacaoId: string) => {
+    if (!userId) return;
+    const mov = movimentacoes.find(m => m.id === movimentacaoId && m.type === "saida");
+    if (!mov) throw new Error("Movimentação de saída não encontrada");
+    const refId = mov.reference_id;
+    if (!refId) throw new Error("Referência da saída não encontrada");
+
+    const { data: saida, error } = await supabase.from("saidas").select("*").eq("id", refId).single();
+    if (error || !saida) throw new Error("Registro de saída não encontrado");
+
+    // Restore stock: we need to estimate value. Use current avg cost.
+    const estoqueItem = estoque.find(e => e.obra_id === mov.obra_id && e.insumo_id === mov.insumo_id);
+    const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
+    await updateEstoque(mov.obra_id, mov.insumo_id, saida.quantity, saida.quantity * unitCost);
+
+    await supabase.from("saidas").update({ deleted_at: new Date().toISOString() } as any).eq("id", refId);
+    await supabase.from("movimentacoes").update({ deleted_at: new Date().toISOString() }).eq("id", movimentacaoId);
+    await addAuditLog("desfazer_saida", "saidas", refId, mov.obra_id, saida, null);
+    refetchAll();
+  }, [userId, movimentacoes, estoque, updateEstoque, addAuditLog, refetchAll]);
+
+  const undoTransferencia = useCallback(async (movimentacaoId: string) => {
+    if (!userId) return;
+    const mov = movimentacoes.find(m => m.id === movimentacaoId && (m.type === "transferencia_saida" || m.type === "transferencia_entrada"));
+    if (!mov) throw new Error("Movimentação de transferência não encontrada");
+    const refId = mov.reference_id;
+    if (!refId) throw new Error("Referência da transferência não encontrada");
+
+    const { data: transf, error } = await supabase.from("transferencias").select("*").eq("id", refId).single();
+    if (error || !transf) throw new Error("Registro de transferência não encontrado");
+
+    // Reverse: add back to origin, remove from destination
+    const estoqueOrig = estoque.find(e => e.obra_id === transf.obra_origem_id && e.insumo_id === transf.insumo_id);
+    const estoqDest = estoque.find(e => e.obra_id === transf.obra_destino_id && e.insumo_id === transf.insumo_id);
+    const unitCostOrig = estoqueOrig ? estoqueOrig.average_unit_cost : (estoqDest ? estoqDest.average_unit_cost : 0);
+    const unitCostDest = estoqDest ? estoqDest.average_unit_cost : unitCostOrig;
+
+    await updateEstoque(transf.obra_origem_id, transf.insumo_id, transf.quantity, transf.quantity * unitCostDest);
+    await updateEstoque(transf.obra_destino_id, transf.insumo_id, -transf.quantity, -(transf.quantity * unitCostDest));
+
+    // Soft-delete both movimentacoes linked to this transfer
+    const relatedMovs = movimentacoes.filter(m => m.reference_id === refId && (m.type === "transferencia_saida" || m.type === "transferencia_entrada"));
+    for (const rm of relatedMovs) {
+      await supabase.from("movimentacoes").update({ deleted_at: new Date().toISOString() }).eq("id", rm.id);
+    }
+    await addAuditLog("desfazer_transferencia", "transferencias", refId, transf.obra_origem_id, transf, null);
+    refetchAll();
+  }, [userId, movimentacoes, estoque, updateEstoque, addAuditLog, refetchAll]);
+
+  const resetEstoqueObra = useCallback(async (obraId: string) => {
+    if (!userId) return;
+    const { error } = await supabase.from("estoque").delete().eq("obra_id", obraId);
+    if (error) throw error;
+    await addAuditLog("zerar_estoque_obra", "estoque", null, obraId, null, { action: "reset_all" });
+    refetchAll();
+  }, [userId, addAuditLog, refetchAll]);
+
   return (
     <InventoryContext.Provider value={{
       obras, insumos, estoque, entradas, movimentacoes, saidas,
       kits, kitItems, locations, servicePackages, loading,
       selectedObraId, setSelectedObraId, getSelectedObra, getEstoqueByObra,
       addEntrada, addSaida, addTransferencia, addInventarioItem, undoInventarioAjuste,
+      undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra,
       refetchAll,
     }}>
       {children}

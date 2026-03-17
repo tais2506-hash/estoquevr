@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,10 @@ const ObraDashboard = () => {
   const [estoqueCategory, setEstoqueCategory] = useState("");
   const [searchOutrasObras, setSearchOutrasObras] = useState("");
   const [showOutrasObras, setShowOutrasObras] = useState(false);
-  const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, kits, kitItems } = useInventory();
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra, kits, kitItems } = useInventory();
   const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
@@ -131,6 +134,41 @@ const ObraDashboard = () => {
 
   if (!obra || !selectedObraId) { navigate("/obras"); return null; }
 
+  const handleResetEstoqueObra = async () => {
+    if (resetConfirmText !== "EXCLUIR TUDO" || !selectedObraId) return;
+    setIsResetting(true);
+    try {
+      await resetEstoqueObra(selectedObraId);
+      toast.success("Estoque desta obra excluído com sucesso.");
+      setResetConfirmText("");
+      setResetDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao excluir estoque");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleUndo = async (mov: any) => {
+    try {
+      if (mov.type === "ajuste_inventario") {
+        await undoInventarioAjuste(mov.id);
+        toast.success("Ajuste de inventário desfeito");
+      } else if (mov.type === "entrada") {
+        await undoEntrada(mov.id);
+        toast.success("Entrada desfeita com sucesso");
+      } else if (mov.type === "saida") {
+        await undoSaida(mov.id);
+        toast.success("Saída desfeita com sucesso");
+      } else if (mov.type === "transferencia_saida" || mov.type === "transferencia_entrada") {
+        await undoTransferencia(mov.id);
+        toast.success("Transferência desfeita com sucesso");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao desfazer movimentação");
+    }
+  };
+
   const renderOperation = () => {
     switch (view) {
       case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
@@ -156,11 +194,51 @@ const ObraDashboard = () => {
               <p className="text-xs text-muted-foreground">{obra.address}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-6 text-sm">
               <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="text-center"><p className="text-muted-foreground text-xs">Valor Imobilizado</p><p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
+            {isAdmin && (
+              <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="hidden sm:flex">
+                    <Trash2 className="w-4 h-4 mr-1" /> Zerar Estoque
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Estoque desta Obra</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <p>
+                        Esta ação irá <strong className="text-destructive">excluir permanentemente todos os registros de estoque</strong> desta obra.
+                        O histórico de movimentações será mantido.
+                      </p>
+                      <p className="text-sm">
+                        Para confirmar, digite <strong>EXCLUIR TUDO</strong> no campo abaixo:
+                      </p>
+                      <Input
+                        value={resetConfirmText}
+                        onChange={e => setResetConfirmText(e.target.value)}
+                        placeholder="EXCLUIR TUDO"
+                        className="font-mono"
+                      />
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={resetConfirmText !== "EXCLUIR TUDO" || isResetting}
+                      onClick={(e) => { e.preventDefault(); handleResetEstoqueObra(); }}
+                    >
+                      {isResetting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+                      Excluir Estoque
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}><LogOut className="w-4 h-4" /></Button>
           </div>
         </div>
@@ -420,32 +498,25 @@ const ObraDashboard = () => {
                             <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
                             {isAdmin && (
                               <td className="p-3 text-center">
-                                {mov.type === "ajuste_inventario" && (
+                                {["entrada", "saida", "ajuste_inventario", "transferencia_saida", "transferencia_entrada"].includes(mov.type) && (
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer ajuste">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer">
                                         <Undo2 className="w-4 h-4" />
                                       </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>Desfazer Ajuste de Inventário</AlertDialogTitle>
+                                        <AlertDialogTitle>Desfazer Movimentação</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Tem certeza que deseja desfazer este ajuste? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido ao valor anterior. Esta ação não pode ser desfeita.
+                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido. Esta ação não pode ser desfeita.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                         <AlertDialogAction
                                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          onClick={async () => {
-                                            try {
-                                              await undoInventarioAjuste(mov.id);
-                                              toast.success("Ajuste de inventário desfeito com sucesso");
-                                            } catch (err: any) {
-                                              toast.error(err.message || "Erro ao desfazer ajuste");
-                                            }
-                                          }}
+                                          onClick={async () => { await handleUndo(mov); }}
                                         >
                                           Desfazer
                                         </AlertDialogAction>
