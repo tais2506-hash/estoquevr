@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
 import { Button } from "@/components/ui/button";
@@ -7,28 +7,34 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Package, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 const KitsCRUD = () => {
-  const { kits, kitItems, insumos } = useInventory();
+  const { kits, kitItems, insumos, obras } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [selectedObraFilter, setSelectedObraFilter] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", description: "" });
+  const [form, setForm] = useState({ name: "", description: "", obra_id: "" });
   const [items, setItems] = useState<{ insumo_id: string; quantity: number }[]>([]);
 
-  const filtered = kits.filter(k =>
-    k.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const activeObras = useMemo(() => obras.filter(o => o.status === "ativa"), [obras]);
 
-  const resetForm = () => { setForm({ name: "", description: "" }); setEditing(null); setItems([]); };
+  const filtered = useMemo(() => {
+    let result = kits;
+    if (selectedObraFilter) result = result.filter(k => k.obra_id === selectedObraFilter);
+    if (search) result = result.filter(k => k.name.toLowerCase().includes(search.toLowerCase()));
+    return result;
+  }, [kits, search, selectedObraFilter]);
+
+  const resetForm = () => { setForm({ name: "", description: "", obra_id: "" }); setEditing(null); setItems([]); };
 
   const openEdit = (kit: any) => {
     setEditing(kit);
-    setForm({ name: kit.name, description: kit.description || "" });
+    setForm({ name: kit.name, description: kit.description || "", obra_id: kit.obra_id || "" });
     const kitItms = kitItems.filter(ki => ki.kit_id === kit.id);
     setItems(kitItms.map(ki => ({ insumo_id: ki.insumo_id, quantity: ki.quantity })));
     setDialogOpen(true);
@@ -39,18 +45,18 @@ const KitsCRUD = () => {
 
   const handleSave = async () => {
     if (!form.name) { toast.error("Nome é obrigatório"); return; }
+    if (!form.obra_id) { toast.error("Selecione a obra"); return; }
     if (items.length === 0 || items.some(i => !i.insumo_id)) { toast.error("Adicione pelo menos 1 insumo ao kit"); return; }
     try {
       if (editing) {
-        const { error } = await supabase.from("kits").update({ name: form.name, description: form.description } as any).eq("id", editing.id);
+        const { error } = await supabase.from("kits").update({ name: form.name, description: form.description, obra_id: form.obra_id } as any).eq("id", editing.id);
         if (error) throw error;
-        // Replace kit items
         await supabase.from("kit_items").delete().eq("kit_id", editing.id);
         const { error: e2 } = await supabase.from("kit_items").insert(items.map(i => ({ kit_id: editing.id, insumo_id: i.insumo_id, quantity: i.quantity })));
         if (e2) throw e2;
         toast.success("Kit atualizado");
       } else {
-        const { data: inserted, error } = await supabase.from("kits").insert({ name: form.name, description: form.description } as any).select().single();
+        const { data: inserted, error } = await supabase.from("kits").insert({ name: form.name, description: form.description, obra_id: form.obra_id } as any).select().single();
         if (error) throw error;
         const { error: e2 } = await supabase.from("kit_items").insert(items.map(i => ({ kit_id: inserted.id, insumo_id: i.insumo_id, quantity: i.quantity })));
         if (e2) throw e2;
@@ -76,12 +82,28 @@ const KitsCRUD = () => {
     }
   };
 
+  const getObraName = (obraId: string | null) => {
+    if (!obraId) return "—";
+    return obras.find(o => o.id === obraId)?.name || "—";
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar kits..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-3 flex-1 min-w-0">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Buscar kits..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          </div>
+          <Select value={selectedObraFilter} onValueChange={setSelectedObraFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Todas as obras" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as obras</SelectItem>
+              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
@@ -93,7 +115,16 @@ const KitsCRUD = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Nome</Label>
+                <Label>Obra <span className="text-destructive">*</span></Label>
+                <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                  <SelectContent>
+                    {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nome <span className="text-destructive">*</span></Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do kit" />
               </div>
               <div className="space-y-2">
@@ -144,6 +175,7 @@ const KitsCRUD = () => {
           <thead>
             <tr className="bg-muted/50 border-b border-border">
               <th className="text-left p-3 font-medium text-muted-foreground">Kit</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Obra</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Itens</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
             </tr>
@@ -157,6 +189,7 @@ const KitsCRUD = () => {
                     <p className="font-medium text-foreground">{k.name}</p>
                     {k.description && <p className="text-xs text-muted-foreground">{k.description}</p>}
                   </td>
+                  <td className="p-3 text-sm text-foreground">{getObraName(k.obra_id)}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
                       {kitItms.map(ki => {
@@ -193,7 +226,7 @@ const KitsCRUD = () => {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">Nenhum kit encontrado</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum kit encontrado</td></tr>
             )}
           </tbody>
         </table>

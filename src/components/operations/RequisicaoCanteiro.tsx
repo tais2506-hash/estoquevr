@@ -29,7 +29,13 @@ interface Requisicao {
   user_id: string;
   created_at: string;
   kit_id: string | null;
-  service_package_id: string | null;
+}
+
+interface KitGroup {
+  kit_id: string;
+  kitName: string;
+  kitDescription: string;
+  requisicoes: Requisicao[];
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
@@ -50,7 +56,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const obraLocations = useMemo(() => locations.filter(l => l.obra_id === selectedObraId), [locations, selectedObraId]);
-  const obraServices = useMemo(() => servicePackages.filter(s => s.status === "ativo"), [servicePackages]);
+  const obraKits = useMemo(() => kits.filter(k => k.obra_id === selectedObraId), [kits, selectedObraId]);
 
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ["requisicoes", selectedObraId],
@@ -67,7 +73,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     enabled: !!selectedObraId,
   });
 
-  // Realtime subscription
   useEffect(() => {
     if (!selectedObraId) return;
     const channel = supabase
@@ -79,7 +84,27 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedObraId, queryClient]);
 
-  const pendentes = requisicoes.filter(r => r.status === "pendente");
+  // Separate individual and kit requisitions
+  const pendentesIndividuais = requisicoes.filter(r => r.status === "pendente" && !r.kit_id);
+  const pendentesKitGroups = useMemo(() => {
+    const kitReqs = requisicoes.filter(r => r.status === "pendente" && r.kit_id);
+    const groups: Record<string, Requisicao[]> = {};
+    kitReqs.forEach(r => {
+      const key = `${r.kit_id}-${r.created_at.substring(0, 19)}-${r.responsavel}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+    return Object.entries(groups).map(([, reqs]): KitGroup => {
+      const kit = kits.find(k => k.id === reqs[0].kit_id);
+      return {
+        kit_id: reqs[0].kit_id!,
+        kitName: kit?.name || "Kit",
+        kitDescription: kit?.description || "",
+        requisicoes: reqs,
+      };
+    });
+  }, [requisicoes, kits]);
+
   const historico = requisicoes.filter(r => r.status !== "pendente");
 
   const getLocationPath = (locId: string): string => {
@@ -94,10 +119,12 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
-  const getServiceName = (id: string | null) => {
-    if (!id) return null;
-    const s = servicePackages.find(sp => sp.id === id);
-    return s ? (s.eap_code ? `${s.eap_code} - ${s.name}` : s.name) : null;
+  const getKitItemsDescription = (kitId: string) => {
+    const items = kitItems.filter(ki => ki.kit_id === kitId);
+    return items.map(ki => {
+      const ins = insumos.find(i => i.id === ki.insumo_id);
+      return ins ? `${ins.name} x${ki.quantity} ${ins.unit}` : null;
+    }).filter(Boolean).join(", ");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +155,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         });
         if (error) throw error;
         toast.success("Requisição enviada! Aguardando aprovação do almoxarifado.");
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
+        resetForm();
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
@@ -136,7 +163,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         setIsSubmitting(false);
       }
     } else {
-      // Kit mode - create one requisition per kit item
       if (!formData.kitId || !formData.responsavel) {
         toast.error("Preencha todos os campos obrigatórios");
         return;
@@ -151,22 +177,24 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
       setIsSubmitting(true);
       try {
-        for (const ki of kitItms) {
-          await supabase.from("requisicoes").insert({
-            obra_id: selectedObraId,
-            insumo_id: ki.insumo_id,
-            quantity: ki.quantity * qty,
-            local_aplicacao: localAplicacao,
-            location_id: formData.locationId || null,
-            responsavel: formData.responsavel,
-            solicitante_nome: formData.solicitanteNome || user.name,
-            date: formData.date,
-            user_id: user.id,
-            kit_id: formData.kitId,
-          });
-        }
+        const now = new Date().toISOString();
+        const rows = kitItms.map(ki => ({
+          obra_id: selectedObraId,
+          insumo_id: ki.insumo_id,
+          quantity: ki.quantity * qty,
+          local_aplicacao: localAplicacao,
+          location_id: formData.locationId || null,
+          responsavel: formData.responsavel,
+          solicitante_nome: formData.solicitanteNome || user.name,
+          date: formData.date,
+          user_id: user.id,
+          kit_id: formData.kitId,
+          created_at: now,
+        }));
+        const { error } = await supabase.from("requisicoes").insert(rows);
+        if (error) throw error;
         toast.success(`Requisição de kit enviada! ${kitItms.length} itens aguardando aprovação.`);
-        setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
+        resetForm();
         setTab("pendentes");
       } catch {
         toast.error("Erro ao enviar requisição");
@@ -176,38 +204,28 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
-  const handleApprove = async (req: Requisicao) => {
+  const resetForm = () => {
+    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
+  };
+
+  const handleApproveIndividual = async (req: Requisicao) => {
     if (!user || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      // Check stock availability
       const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
       if (!estoqueItem || estoqueItem.quantity < req.quantity) {
         toast.error(`Estoque insuficiente. Disponível: ${estoqueItem?.quantity || 0} ${getInsumoUnit(req.insumo_id)}`);
         setIsSubmitting(false);
         return;
       }
-
-      // Execute stock decrease
       await addSaida({
-        obraId: req.obra_id,
-        insumoId: req.insumo_id,
-        quantity: req.quantity,
-        date: req.date,
-        localAplicacao: req.local_aplicacao,
-        responsavel: req.responsavel,
+        obraId: req.obra_id, insumoId: req.insumo_id, quantity: req.quantity,
+        date: req.date, localAplicacao: req.local_aplicacao, responsavel: req.responsavel,
         locationId: req.location_id || undefined,
-        kitId: req.kit_id || undefined,
-        servicePackageId: req.service_package_id || undefined,
       });
-
-      // Update requisition status
       await supabase.from("requisicoes").update({
-        status: "aprovada",
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
+        status: "aprovada", approved_by: user.id, approved_at: new Date().toISOString(),
       } as any).eq("id", req.id);
-
       toast.success("Requisição aprovada e baixa realizada!");
       queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
     } catch {
@@ -217,7 +235,64 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
-  const handleReject = async (reqId: string) => {
+  const handleApproveKit = async (group: KitGroup) => {
+    if (!user || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // Check stock for all items first
+      for (const req of group.requisicoes) {
+        const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
+        if (!estoqueItem || estoqueItem.quantity < req.quantity) {
+          toast.error(`Estoque insuficiente de ${getInsumoName(req.insumo_id)}. Disponível: ${estoqueItem?.quantity || 0} ${getInsumoUnit(req.insumo_id)}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      // Process all items
+      for (const req of group.requisicoes) {
+        await addSaida({
+          obraId: req.obra_id, insumoId: req.insumo_id, quantity: req.quantity,
+          date: req.date, localAplicacao: req.local_aplicacao, responsavel: req.responsavel,
+          locationId: req.location_id || undefined, kitId: req.kit_id || undefined,
+        });
+        await supabase.from("requisicoes").update({
+          status: "aprovada", approved_by: user.id, approved_at: new Date().toISOString(),
+        } as any).eq("id", req.id);
+      }
+      toast.success(`Kit "${group.kitName}" aprovado! ${group.requisicoes.length} itens baixados.`);
+      queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
+    } catch {
+      toast.error("Erro ao aprovar kit");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectKit = async (group: KitGroup) => {
+    if (!user || !rejectReason.trim()) {
+      toast.error("Informe o motivo da rejeição");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      for (const req of group.requisicoes) {
+        await supabase.from("requisicoes").update({
+          status: "rejeitada", motivo_rejeicao: rejectReason,
+          approved_by: user.id, approved_at: new Date().toISOString(),
+        } as any).eq("id", req.id);
+      }
+      toast.success(`Kit "${group.kitName}" rejeitado.`);
+      setRejectingId(null);
+      setRejectReason("");
+      queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
+    } catch {
+      toast.error("Erro ao rejeitar kit");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectIndividual = async (reqId: string) => {
     if (!user || !rejectReason.trim()) {
       toast.error("Informe o motivo da rejeição");
       return;
@@ -225,10 +300,8 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     setIsSubmitting(true);
     try {
       await supabase.from("requisicoes").update({
-        status: "rejeitada",
-        motivo_rejeicao: rejectReason,
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
+        status: "rejeitada", motivo_rejeicao: rejectReason,
+        approved_by: user.id, approved_at: new Date().toISOString(),
       } as any).eq("id", reqId);
       toast.success("Requisição rejeitada.");
       setRejectingId(null);
@@ -250,6 +323,8 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
+  const pendentesCount = pendentesIndividuais.length + pendentesKitGroups.length;
+
   return (
     <div className="animate-fade-in">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -258,22 +333,17 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       <h2 className="text-xl font-bold text-foreground mb-1">Requisição de Canteiro</h2>
       <p className="text-sm text-muted-foreground mb-6">Solicite materiais online — o almoxarifado aprova e a baixa é automática.</p>
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-border pb-2">
-        <Button variant={tab === "nova" ? "default" : "ghost"} size="sm" onClick={() => setTab("nova")}>
-          Nova Requisição
-        </Button>
+        <Button variant={tab === "nova" ? "default" : "ghost"} size="sm" onClick={() => setTab("nova")}>Nova Requisição</Button>
         <Button variant={tab === "pendentes" ? "default" : "ghost"} size="sm" onClick={() => setTab("pendentes")} className="relative">
           Pendentes
-          {pendentes.length > 0 && (
+          {pendentesCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {pendentes.length}
+              {pendentesCount}
             </span>
           )}
         </Button>
-        <Button variant={tab === "historico" ? "default" : "ghost"} size="sm" onClick={() => setTab("historico")}>
-          Histórico
-        </Button>
+        <Button variant={tab === "historico" ? "default" : "ghost"} size="sm" onClick={() => setTab("historico")}>Histórico</Button>
       </div>
 
       {/* Nova Requisição */}
@@ -283,11 +353,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <Button type="button" variant={mode === "insumo" ? "default" : "outline"} size="sm" onClick={() => setMode("insumo")}>
               Insumo Individual
             </Button>
-            {kits.length > 0 && (
-              <Button type="button" variant={mode === "kit" ? "default" : "outline"} size="sm" onClick={() => setMode("kit")}>
-                <Package className="w-4 h-4 mr-1" />Kit
-              </Button>
-            )}
+            <Button type="button" variant={mode === "kit" ? "default" : "outline"} size="sm" onClick={() => setMode("kit")}>
+              <Package className="w-4 h-4 mr-1" />Kit
+            </Button>
           </div>
 
           {mode === "insumo" ? (
@@ -310,22 +378,58 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-2">
               <Label>Kit <span className="text-destructive">*</span></Label>
               <SearchableSelect
-                options={kits.map(k => {
-                  const count = kitItems.filter(ki => ki.kit_id === k.id).length;
-                  return { value: k.id, label: `${k.name} (${count} insumos)` };
+                options={obraKits.map(k => {
+                  const items = kitItems.filter(ki => ki.kit_id === k.id);
+                  const itemsDesc = items.map(ki => {
+                    const ins = insumos.find(i => i.id === ki.insumo_id);
+                    return ins ? `${ins.name} x${ki.quantity}` : null;
+                  }).filter(Boolean).join(", ");
+                  const desc = k.description ? `${k.description} — ` : "";
+                  return { value: k.id, label: `${k.name}`, searchTerms: `${desc}${itemsDesc}` };
                 })}
                 value={formData.kitId}
                 onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
                 placeholder="Selecione o kit"
                 searchPlaceholder="Buscar kit..."
-                emptyMessage="Nenhum kit encontrado."
+                emptyMessage="Nenhum kit cadastrado para esta obra."
               />
+              {/* Kit details preview */}
+              {formData.kitId && (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  {(() => {
+                    const kit = obraKits.find(k => k.id === formData.kitId);
+                    const items = kitItems.filter(ki => ki.kit_id === formData.kitId);
+                    if (!kit) return null;
+                    return (
+                      <>
+                        {kit.description && <p className="text-xs text-muted-foreground">{kit.description}</p>}
+                        <p className="text-xs font-medium text-foreground">Materiais do kit:</p>
+                        {items.map(ki => {
+                          const ins = insumos.find(i => i.id === ki.insumo_id);
+                          if (!ins) return null;
+                          const estItem = estoqueObra.find(e => e.insumo_id === ki.insumo_id);
+                          const qty = parseFloat(formData.quantity) || 1;
+                          const needed = ki.quantity * qty;
+                          const disponivel = estItem?.quantity || 0;
+                          const insuficiente = disponivel < needed;
+                          return (
+                            <div key={ki.id} className={`text-xs flex justify-between ${insuficiente ? "text-destructive" : "text-muted-foreground"}`}>
+                              <span>{ins.name} x{needed} {ins.unit}</span>
+                              <span>Disp: {disponivel}{insuficiente ? " ⚠️" : ""}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Quantidade <span className="text-destructive">*</span></Label>
+              <Label>Quantidade {mode === "kit" ? "(kits)" : ""}<span className="text-destructive">*</span></Label>
               <Input type="number" min="0" step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
             </div>
             <div className="space-y-2">
@@ -363,20 +467,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             </div>
           )}
 
-          {obraServices.length > 0 && (
-            <div className="space-y-2">
-              <Label>Serviço</Label>
-              <SearchableSelect
-                options={obraServices.map(s => ({ value: s.id, label: s.name }))}
-                value={formData.servicePackageId}
-                onValueChange={v => setFormData(p => ({ ...p, servicePackageId: v }))}
-                placeholder="Selecione o serviço"
-                searchPlaceholder="Buscar serviço..."
-                emptyMessage="Nenhum serviço encontrado."
-              />
-            </div>
-          )}
-
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Enviando..." : "Enviar Requisição"}
           </Button>
@@ -386,13 +476,79 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       {/* Pendentes */}
       {tab === "pendentes" && (
         <div className="space-y-4">
-          {pendentes.length === 0 && (
+          {pendentesCount === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
               <p>Nenhuma requisição pendente</p>
             </div>
           )}
-          {pendentes.map(req => (
+
+          {/* Kit groups */}
+          {pendentesKitGroups.map(group => (
+            <div key={`kit-${group.kit_id}-${group.requisicoes[0].created_at}`} className="bg-card rounded-xl border-2 border-amber-300 p-5 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-amber-600" />
+                    <p className="font-semibold text-foreground">{group.kitName}</p>
+                  </div>
+                  {group.kitDescription && <p className="text-xs text-muted-foreground mt-0.5">{group.kitDescription}</p>}
+                </div>
+                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                  <Package className="w-3 h-3 mr-1" />Kit
+                </Badge>
+              </div>
+
+              {/* Kit items list */}
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Itens do kit:</p>
+                {group.requisicoes.map(req => {
+                  const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
+                  const disponivel = estoqueItem?.quantity || 0;
+                  const insuficiente = disponivel < req.quantity;
+                  return (
+                    <div key={req.id} className={`text-sm flex justify-between ${insuficiente ? "text-destructive" : "text-foreground"}`}>
+                      <span>{getInsumoName(req.insumo_id)} — {req.quantity} {getInsumoUnit(req.insumo_id)}</span>
+                      <span className="text-xs">Disp: {disponivel}{insuficiente ? " ⚠️" : ""}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                <p>📋 Solicitante: <span className="text-foreground">{group.requisicoes[0].solicitante_nome || "—"}</span></p>
+                <p>👤 Responsável: <span className="text-foreground">{group.requisicoes[0].responsavel}</span></p>
+                <p>📍 Local: <span className="text-foreground">{group.requisicoes[0].local_aplicacao || "—"}</span></p>
+                <p>📅 Data: <span className="text-foreground">{new Date(group.requisicoes[0].date).toLocaleDateString("pt-BR")}</span></p>
+              </div>
+
+              {isAlmox && (
+                <>
+                  {rejectingId === `kit-${group.kit_id}-${group.requisicoes[0].created_at}` ? (
+                    <div className="space-y-2">
+                      <Textarea placeholder="Motivo da rejeição do kit..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[60px]" />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="destructive" onClick={() => handleRejectKit(group)} disabled={isSubmitting}>Confirmar Rejeição</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancelar</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={() => handleApproveKit(group)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
+                        <Check className="w-4 h-4 mr-1" /> Aprovar Kit Completo
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setRejectingId(`kit-${group.kit_id}-${group.requisicoes[0].created_at}`)} disabled={isSubmitting}>
+                        <X className="w-4 h-4 mr-1" /> Rejeitar Kit
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Individual requisitions */}
+          {pendentesIndividuais.map(req => (
             <div key={req.id} className="bg-card rounded-xl border border-border p-5 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
@@ -408,12 +564,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                 <p>👤 Responsável: <span className="text-foreground">{req.responsavel}</span></p>
                 <p>📍 Local: <span className="text-foreground">{req.local_aplicacao || "—"}</span></p>
                 <p>📅 Data: <span className="text-foreground">{new Date(req.date).toLocaleDateString("pt-BR")}</span></p>
-                {getServiceName(req.service_package_id) && (
-                  <p className="col-span-2">🔧 Serviço: <span className="text-foreground font-medium">{getServiceName(req.service_package_id)}</span></p>
-                )}
               </div>
-
-              {/* Estoque check */}
               {(() => {
                 const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
                 const disponivel = estoqueItem?.quantity || 0;
@@ -425,29 +576,19 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                   </div>
                 );
               })()}
-
               {isAlmox && (
                 <>
                   {rejectingId === req.id ? (
                     <div className="space-y-2">
-                      <Textarea
-                        placeholder="Motivo da rejeição..."
-                        value={rejectReason}
-                        onChange={e => setRejectReason(e.target.value)}
-                        className="min-h-[60px]"
-                      />
+                      <Textarea placeholder="Motivo da rejeição..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[60px]" />
                       <div className="flex gap-2">
-                        <Button size="sm" variant="destructive" onClick={() => handleReject(req.id)} disabled={isSubmitting}>
-                          Confirmar Rejeição
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>
-                          Cancelar
-                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleRejectIndividual(req.id)} disabled={isSubmitting}>Confirmar Rejeição</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancelar</Button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={() => handleApprove(req)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Button size="sm" onClick={() => handleApproveIndividual(req)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
                         <Check className="w-4 h-4 mr-1" /> Aprovar e Baixar
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setRejectingId(req.id)} disabled={isSubmitting}>
@@ -475,7 +616,10 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <div key={req.id} className="bg-card rounded-xl border border-border p-4 space-y-2">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-semibold text-foreground text-sm">{getInsumoName(req.insumo_id)}</p>
+                  <p className="font-semibold text-foreground text-sm">
+                    {req.kit_id ? `🧰 ${kits.find(k => k.id === req.kit_id)?.name || "Kit"} — ` : ""}
+                    {getInsumoName(req.insumo_id)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Qtd: {req.quantity} {getInsumoUnit(req.insumo_id)} • {new Date(req.date).toLocaleDateString("pt-BR")}
                   </p>
