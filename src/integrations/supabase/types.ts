@@ -679,6 +679,7 @@ export type Database = {
           reference_id: string | null
           type: Database["public"]["Enums"]["movimentacao_type"]
           user_id: string
+          user_name: string
         }
         Insert: {
           created_at?: string
@@ -692,6 +693,7 @@ export type Database = {
           reference_id?: string | null
           type: Database["public"]["Enums"]["movimentacao_type"]
           user_id: string
+          user_name?: string
         }
         Update: {
           created_at?: string
@@ -705,6 +707,7 @@ export type Database = {
           reference_id?: string | null
           type?: Database["public"]["Enums"]["movimentacao_type"]
           user_id?: string
+          user_name?: string
         }
         Relationships: [
           {
