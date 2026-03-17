@@ -299,10 +299,19 @@ const ObraDashboard = () => {
                                     if (!ins) return null;
                                     const est = estoqueObra.find(e => e.insumo_id === ki.insumo_id);
                                     const disp = est?.quantity || 0;
-                                    const insuf = disp < ki.quantity;
+                                    const needed = ki.quantity;
+                                    const insuf = disp < needed;
+                                    const baixo = !insuf && disp < needed * 3;
                                     return (
-                                      <span key={ki.id} className={`text-xs px-2 py-0.5 rounded-full ${insuf ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
-                                        {ins.name} x{ki.quantity} {ins.unit} {insuf && "⚠️"}
+                                      <span key={ki.id} className={`text-xs px-2 py-0.5 rounded-full ${
+                                        insuf ? "bg-destructive/10 text-destructive font-medium" :
+                                        baixo ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                                        "bg-muted text-foreground"
+                                      }`}>
+                                        {ins.name} x{ki.quantity} {ins.unit}
+                                        <span className="ml-1 opacity-70">({disp})</span>
+                                        {insuf && " ⚠️"}
+                                        {baixo && " ⏳"}
                                       </span>
                                     );
                                   })}
