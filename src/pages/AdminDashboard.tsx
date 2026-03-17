@@ -109,44 +109,6 @@ const AdminDashboard = () => {
               <Button variant="outline" size="sm" onClick={() => handleExport("movimentacoes")}>
                 <Download className="w-4 h-4 mr-1" /> Movimentações
               </Button>
-              <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="w-4 h-4 mr-1" /> Zerar Estoque
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir Todo o Estoque</AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-3">
-                      <p>
-                        Esta ação irá <strong className="text-destructive">excluir permanentemente todos os registros de estoque</strong> de todas as obras.
-                        O histórico de movimentações será mantido.
-                      </p>
-                      <p className="text-sm">
-                        Para confirmar, digite <strong>EXCLUIR TUDO</strong> no campo abaixo:
-                      </p>
-                      <Input
-                        value={resetConfirmText}
-                        onChange={e => setResetConfirmText(e.target.value)}
-                        placeholder="EXCLUIR TUDO"
-                        className="font-mono"
-                      />
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      disabled={resetConfirmText !== "EXCLUIR TUDO" || isResetting}
-                      onClick={(e) => { e.preventDefault(); handleResetEstoque(); }}
-                    >
-                      {isResetting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-                      Excluir Estoque Global
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
             <span className="text-sm text-muted-foreground hidden sm:inline">{user?.name}</span>
             <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}>
