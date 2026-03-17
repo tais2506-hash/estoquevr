@@ -37,6 +37,7 @@ const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "second
   transferencia_saida: { label: "Transf. Saída", variant: "destructive" },
   devolucao: { label: "Devolução", variant: "secondary" },
   ajuste_inventario: { label: "Ajuste Inventário", variant: "outline" },
+  exclusao_global: { label: "Exclusão Global", variant: "destructive" },
 };
 
 const ObraDashboard = () => {
@@ -475,7 +476,8 @@ const ObraDashboard = () => {
                         <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
                         <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Descrição</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Usuário</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Descrição</th>
                         {isAdmin && <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>}
                       </tr>
                     </thead>
@@ -490,12 +492,13 @@ const ObraDashboard = () => {
                               <p className="font-medium text-foreground">{getInsumoName(mov.insumo_id)}</p>
                             </td>
                             <td className="p-3 text-right font-mono text-foreground">
-                              {mov.type === "saida" || mov.type === "transferencia_saida" || mov.type === "devolucao"
+                              {mov.type === "saida" || mov.type === "transferencia_saida" || mov.type === "devolucao" || mov.type === "exclusao_global"
                                 ? `-${mov.quantity}`
                                 : `+${mov.quantity}`
                               } {getInsumoUnit(mov.insumo_id)}
                             </td>
-                            <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
+                            <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{mov.user_name || "—"}</td>
+                            <td className="p-3 text-muted-foreground hidden md:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
                             {isAdmin && (
                               <td className="p-3 text-center">
                                 {["entrada", "saida", "ajuste_inventario", "transferencia_saida", "transferencia_entrada"].includes(mov.type) && (
@@ -530,7 +533,7 @@ const ObraDashboard = () => {
                         );
                       })}
                       {movsObra.length === 0 && (
-                        <tr><td colSpan={isAdmin ? 6 : 5} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                        <tr><td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
                       )}
                     </tbody>
                   </table>

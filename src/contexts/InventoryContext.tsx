@@ -245,8 +245,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       obra_id: data.obraId, insumo_id: data.insumoId, type: data.type as any,
       quantity: data.quantity, date: data.date, description: data.description,
       reference_id: data.referenceId || null, user_id: userId,
+      user_name: user?.name || "",
     });
-  }, [userId]);
+  }, [userId, user]);
 
   const addAuditLog = useCallback(async (action: string, tableName: string, recordId?: string, obraId?: string, oldValue?: any, newValue?: any) => {
     if (!userId) return;
@@ -440,11 +441,27 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
   const resetEstoqueObra = useCallback(async (obraId: string) => {
     if (!userId) return;
+    // Get current stock items before deleting so we can log them
+    const obraEstoque = estoque.filter(e => e.obra_id === obraId && e.quantity > 0);
+    const today = new Date().toISOString().split("T")[0];
+    
     const { error } = await supabase.from("estoque").delete().eq("obra_id", obraId);
     if (error) throw error;
-    await addAuditLog("zerar_estoque_obra", "estoque", null, obraId, null, { action: "reset_all" });
+
+    // Log a movimentação for each item that was zeroed
+    for (const item of obraEstoque) {
+      const insumo = insumos.find(i => i.id === item.insumo_id);
+      await supabase.from("movimentacoes").insert({
+        obra_id: obraId, insumo_id: item.insumo_id, type: "exclusao_global" as any,
+        quantity: item.quantity, date: today,
+        description: `Exclusão global do estoque — ${insumo?.name || "insumo"}: ${item.quantity} ${insumo?.unit || "un"}`,
+        user_id: userId, user_name: user?.name || "",
+      });
+    }
+
+    await addAuditLog("zerar_estoque_obra", "estoque", null, obraId, null, { action: "reset_all", items: obraEstoque.length });
     refetchAll();
-  }, [userId, addAuditLog, refetchAll]);
+  }, [userId, user, estoque, insumos, addAuditLog, refetchAll]);
 
   return (
     <InventoryContext.Provider value={{
