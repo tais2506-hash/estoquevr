@@ -194,11 +194,51 @@ const ObraDashboard = () => {
               <p className="text-xs text-muted-foreground">{obra.address}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-6 text-sm">
               <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="text-center"><p className="text-muted-foreground text-xs">Valor Imobilizado</p><p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
+            {isAdmin && (
+              <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="hidden sm:flex">
+                    <Trash2 className="w-4 h-4 mr-1" /> Zerar Estoque
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Estoque desta Obra</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-3">
+                      <p>
+                        Esta ação irá <strong className="text-destructive">excluir permanentemente todos os registros de estoque</strong> desta obra.
+                        O histórico de movimentações será mantido.
+                      </p>
+                      <p className="text-sm">
+                        Para confirmar, digite <strong>EXCLUIR TUDO</strong> no campo abaixo:
+                      </p>
+                      <Input
+                        value={resetConfirmText}
+                        onChange={e => setResetConfirmText(e.target.value)}
+                        placeholder="EXCLUIR TUDO"
+                        className="font-mono"
+                      />
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={resetConfirmText !== "EXCLUIR TUDO" || isResetting}
+                      onClick={(e) => { e.preventDefault(); handleResetEstoqueObra(); }}
+                    >
+                      {isResetting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+                      Excluir Estoque
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate("/"); }}><LogOut className="w-4 h-4" /></Button>
           </div>
         </div>
