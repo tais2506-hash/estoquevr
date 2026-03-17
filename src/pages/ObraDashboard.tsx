@@ -499,9 +499,18 @@ const ObraDashboard = () => {
                             </td>
                             <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{mov.user_name || "—"}</td>
                             <td className="p-3 text-muted-foreground hidden md:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
-                            {isAdmin && (
-                              <td className="p-3 text-center">
-                                {["entrada", "saida", "ajuste_inventario", "transferencia_saida", "transferencia_entrada"].includes(mov.type) && (
+                            {(() => {
+                              const undoPermMap: Record<string, string> = {
+                                entrada: "estoque.entrada.desfazer",
+                                saida: "estoque.saida.desfazer",
+                                ajuste_inventario: "estoque.inventario.desfazer",
+                                transferencia_saida: "estoque.transferencia.desfazer",
+                                transferencia_entrada: "estoque.transferencia.desfazer",
+                              };
+                              const perm = undoPermMap[mov.type];
+                              if (!perm || !hasPermission(perm)) return <td className="p-3" />;
+                              return (
+                                <td className="p-3 text-center">
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer">
@@ -512,7 +521,7 @@ const ObraDashboard = () => {
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Desfazer Movimentação</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido. Esta ação não pode ser desfeita.
+                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
@@ -526,9 +535,9 @@ const ObraDashboard = () => {
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
                                   </AlertDialog>
-                                )}
-                              </td>
-                            )}
+                                </td>
+                              );
+                            })()}
                           </tr>
                         );
                       })}
