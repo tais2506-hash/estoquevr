@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
