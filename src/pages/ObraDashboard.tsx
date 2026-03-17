@@ -478,7 +478,7 @@ const ObraDashboard = () => {
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
                         <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Usuário</th>
                         <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Descrição</th>
-                        {isAdmin && <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>}
+                        <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
