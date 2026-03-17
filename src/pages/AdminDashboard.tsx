@@ -126,6 +126,7 @@ const AdminDashboard = () => {
           <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>
           <TabsContent value="usuarios"><UserManagement /></TabsContent>
           <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>
+          <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>
         </Tabs>
       </main>
     </div>
