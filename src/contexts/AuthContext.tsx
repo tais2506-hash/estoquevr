@@ -10,6 +10,8 @@ interface AuthUser {
   name: string;
   role: AppRole;
   avatarUrl?: string;
+  permissionProfileId?: string | null;
+  permissions: string[];
 }
 
 interface AuthContextType {
@@ -21,26 +23,45 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 async function fetchUserProfile(userId: string): Promise<AuthUser | null> {
   const [profileRes, roleRes] = await Promise.all([
-    supabase.from("profiles").select("name, avatar_url").eq("user_id", userId).single(),
+    supabase.from("profiles").select("name, avatar_url, permission_profile_id").eq("user_id", userId).single(),
     supabase.from("user_roles").select("role").eq("user_id", userId).single(),
   ]);
 
   if (profileRes.error || !profileRes.data) return null;
 
   const { data: authUser } = await supabase.auth.getUser();
+  const role = (roleRes.data?.role as AppRole) || "almoxarifado";
+  const permProfileId = (profileRes.data as any).permission_profile_id as string | null;
+
+  // Load permissions from the user's permission profile
+  let permissions: string[] = [];
+  if (role === "admin") {
+    // Admin has all permissions
+    const { data: allPerms } = await supabase.from("available_permissions").select("id");
+    permissions = allPerms?.map(p => p.id) || [];
+  } else if (permProfileId) {
+    const { data: profilePerms } = await supabase
+      .from("profile_permissions")
+      .select("permission")
+      .eq("profile_id", permProfileId);
+    permissions = profilePerms?.map(p => p.permission) || [];
+  }
 
   return {
     id: userId,
     email: authUser.user?.email || "",
     name: profileRes.data.name || "",
-    role: (roleRes.data?.role as AppRole) || "almoxarifado",
+    role,
     avatarUrl: profileRes.data.avatar_url || undefined,
+    permissionProfileId: permProfileId,
+    permissions,
   };
 }
 
@@ -50,11 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        // Use setTimeout to avoid potential Supabase client deadlocks
         setTimeout(async () => {
           const profile = await fetchUserProfile(newSession.user.id);
           setUser(profile);
@@ -66,7 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       if (existingSession?.user) {
@@ -104,11 +122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   }, []);
 
+  const hasPermission = useCallback((permission: string) => {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    return user.permissions.includes(permission);
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{
       user, session, loading, login, signup, logout,
       isAuthenticated: !!user,
       isAdmin: user?.role === "admin",
+      hasPermission,
     }}>
       {children}
     </AuthContext.Provider>

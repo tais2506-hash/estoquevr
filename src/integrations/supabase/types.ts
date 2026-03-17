@@ -64,6 +64,30 @@ export type Database = {
           },
         ]
       }
+      available_permissions: {
+        Row: {
+          category: string
+          description: string | null
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          category: string
+          description?: string | null
+          id: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       avaliacoes: {
         Row: {
           atendimento: number
@@ -756,12 +780,66 @@ export type Database = {
         }
         Relationships: []
       }
+      permission_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profile_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_permissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           id: string
           name: string
+          permission_profile_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -771,6 +849,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          permission_profile_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -780,11 +859,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          permission_profile_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_permission_profile_id_fkey"
+            columns: ["permission_profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       requisicoes: {
         Row: {
@@ -1084,6 +1172,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_has_permission: {
+        Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
     }

@@ -23,11 +23,11 @@ import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao";
 
 const operations = [
-  { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success" },
-  { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive" },
-  { key: "requisicao" as const, label: "Requisição de Canteiro", icon: FileText, description: "Solicitar materiais online", color: "text-amber-500" },
-  { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info" },
-  { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary" },
+  { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
+  { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive", permission: "estoque.saida.criar" },
+  { key: "requisicao" as const, label: "Requisição de Canteiro", icon: FileText, description: "Solicitar materiais online", color: "text-amber-500", permission: "requisicao.criar" },
+  { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
+  { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -51,7 +51,7 @@ const ObraDashboard = () => {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra, kits, kitItems } = useInventory();
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
   const obra = getSelectedObra();
 
@@ -200,7 +200,7 @@ const ObraDashboard = () => {
               <div className="text-center"><p className="text-muted-foreground text-xs">Itens</p><p className="font-bold text-foreground">{totalItems.toLocaleString("pt-BR")}</p></div>
               <div className="text-center"><p className="text-muted-foreground text-xs">Valor Imobilizado</p><p className="font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             </div>
-            {isAdmin && (
+            {hasPermission("estoque.zerar") && (
               <AlertDialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm" className="hidden sm:flex">
@@ -256,7 +256,7 @@ const ObraDashboard = () => {
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-5">Operações</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {operations.map((op, idx) => (
+                {operations.filter(op => hasPermission(op.permission)).map((op, idx) => (
                   <button key={op.key} onClick={() => setView(op.key)} className="operation-btn animate-fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
                     <op.icon className={`w-10 h-10 ${op.color}`} strokeWidth={1.5} />
                     <span className="font-semibold text-foreground text-sm">{op.label}</span>
@@ -478,7 +478,7 @@ const ObraDashboard = () => {
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
                         <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Usuário</th>
                         <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Descrição</th>
-                        {isAdmin && <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>}
+                        <th className="text-center p-3 font-medium text-muted-foreground w-20">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -499,9 +499,18 @@ const ObraDashboard = () => {
                             </td>
                             <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{mov.user_name || "—"}</td>
                             <td className="p-3 text-muted-foreground hidden md:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
-                            {isAdmin && (
-                              <td className="p-3 text-center">
-                                {["entrada", "saida", "ajuste_inventario", "transferencia_saida", "transferencia_entrada"].includes(mov.type) && (
+                            {(() => {
+                              const undoPermMap: Record<string, string> = {
+                                entrada: "estoque.entrada.desfazer",
+                                saida: "estoque.saida.desfazer",
+                                ajuste_inventario: "estoque.inventario.desfazer",
+                                transferencia_saida: "estoque.transferencia.desfazer",
+                                transferencia_entrada: "estoque.transferencia.desfazer",
+                              };
+                              const perm = undoPermMap[mov.type];
+                              if (!perm || !hasPermission(perm)) return <td className="p-3" />;
+                              return (
+                                <td className="p-3 text-center">
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer">
@@ -512,7 +521,7 @@ const ObraDashboard = () => {
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Desfazer Movimentação</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido. Esta ação não pode ser desfeita.
+                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
@@ -526,14 +535,14 @@ const ObraDashboard = () => {
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
                                   </AlertDialog>
-                                )}
-                              </td>
-                            )}
+                                </td>
+                              );
+                            })()}
                           </tr>
                         );
                       })}
                       {movsObra.length === 0 && (
-                        <tr><td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
                       )}
                     </tbody>
                   </table>
