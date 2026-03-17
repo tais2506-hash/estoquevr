@@ -256,7 +256,7 @@ const ObraDashboard = () => {
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-5">Operações</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {operations.map((op, idx) => (
+                {operations.filter(op => hasPermission(op.permission)).map((op, idx) => (
                   <button key={op.key} onClick={() => setView(op.key)} className="operation-btn animate-fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
                     <op.icon className={`w-10 h-10 ${op.color}`} strokeWidth={1.5} />
                     <span className="font-semibold text-foreground text-sm">{op.label}</span>
