@@ -498,32 +498,25 @@ const ObraDashboard = () => {
                             <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs max-w-xs truncate">{mov.description || "—"}</td>
                             {isAdmin && (
                               <td className="p-3 text-center">
-                                {mov.type === "ajuste_inventario" && (
+                                {["entrada", "saida", "ajuste_inventario", "transferencia_saida", "transferencia_entrada"].includes(mov.type) && (
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer ajuste">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Desfazer">
                                         <Undo2 className="w-4 h-4" />
                                       </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>Desfazer Ajuste de Inventário</AlertDialogTitle>
+                                        <AlertDialogTitle>Desfazer Movimentação</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Tem certeza que deseja desfazer este ajuste? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido ao valor anterior. Esta ação não pode ser desfeita.
+                                          Tem certeza que deseja desfazer esta movimentação ({MOV_TYPE_MAP[mov.type]?.label})? O estoque do insumo <strong>{getInsumoName(mov.insumo_id)}</strong> será revertido. Esta ação não pode ser desfeita.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                         <AlertDialogAction
                                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          onClick={async () => {
-                                            try {
-                                              await undoInventarioAjuste(mov.id);
-                                              toast.success("Ajuste de inventário desfeito com sucesso");
-                                            } catch (err: any) {
-                                              toast.error(err.message || "Erro ao desfazer ajuste");
-                                            }
-                                          }}
+                                          onClick={async () => { await handleUndo(mov); }}
                                         >
                                           Desfazer
                                         </AlertDialogAction>
