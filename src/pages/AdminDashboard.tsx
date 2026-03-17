@@ -25,9 +25,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
-  const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
+  const { obras, estoque, insumos, movimentacoes, loading, refetch } = useInventory();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [resetConfirmText, setResetConfirmText] = useState("");
 
   if (loading) {
     return (
