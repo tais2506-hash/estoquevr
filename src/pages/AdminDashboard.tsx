@@ -17,7 +17,7 @@ import DashboardKits from "@/components/dashboard/DashboardKits";
 import ReportsPage from "@/components/reports/ReportsPage";
 
 const AdminDashboard = () => {
-  const { obras, estoque, insumos, movimentacoes, loading, refetchAll } = useInventory();
+  const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
