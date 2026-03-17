@@ -110,6 +110,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
               <TabsTrigger value="perfis">Perfis</TabsTrigger>
+              <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
