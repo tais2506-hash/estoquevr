@@ -134,6 +134,41 @@ const ObraDashboard = () => {
 
   if (!obra || !selectedObraId) { navigate("/obras"); return null; }
 
+  const handleResetEstoqueObra = async () => {
+    if (resetConfirmText !== "EXCLUIR TUDO" || !selectedObraId) return;
+    setIsResetting(true);
+    try {
+      await resetEstoqueObra(selectedObraId);
+      toast.success("Estoque desta obra excluído com sucesso.");
+      setResetConfirmText("");
+      setResetDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao excluir estoque");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleUndo = async (mov: any) => {
+    try {
+      if (mov.type === "ajuste_inventario") {
+        await undoInventarioAjuste(mov.id);
+        toast.success("Ajuste de inventário desfeito");
+      } else if (mov.type === "entrada") {
+        await undoEntrada(mov.id);
+        toast.success("Entrada desfeita com sucesso");
+      } else if (mov.type === "saida") {
+        await undoSaida(mov.id);
+        toast.success("Saída desfeita com sucesso");
+      } else if (mov.type === "transferencia_saida" || mov.type === "transferencia_entrada") {
+        await undoTransferencia(mov.id);
+        toast.success("Transferência desfeita com sucesso");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao desfazer movimentação");
+    }
+  };
+
   const renderOperation = () => {
     switch (view) {
       case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
