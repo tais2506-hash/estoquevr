@@ -162,10 +162,19 @@ const DashboardKits = () => {
                           if (!ins) return null;
                           const est = kit.obra_id ? estoque.find(e => e.obra_id === kit.obra_id && e.insumo_id === ki.insumo_id) : null;
                           const disp = est?.quantity || 0;
-                          const insuficiente = disp < ki.quantity;
+                          const needed = ki.quantity;
+                          const insuficiente = disp < needed;
+                          const baixo = !insuficiente && disp < needed * 3;
                           return (
-                            <span key={ki.id} className={`text-xs px-2 py-0.5 rounded-full ${insuficiente ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
-                              {ins.name} x{ki.quantity} {insuficiente && "⚠️"}
+                            <span key={ki.id} className={`text-xs px-2 py-0.5 rounded-full ${
+                              insuficiente ? "bg-destructive/10 text-destructive font-medium" :
+                              baixo ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                              "bg-muted text-foreground"
+                            }`}>
+                              {ins.name} x{ki.quantity}
+                              <span className="ml-1 opacity-70">({disp} disp.)</span>
+                              {insuficiente && " ⚠️"}
+                              {baixo && !insuficiente && " ⏳"}
                             </span>
                           );
                         })}
@@ -185,6 +194,12 @@ const DashboardKits = () => {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Legend */}
+        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-destructive/20" /> Sem estoque</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-amber-200 dark:bg-amber-800" /> Estoque baixo (&lt;3x)</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-muted" /> OK</span>
         </div>
       </div>
 
