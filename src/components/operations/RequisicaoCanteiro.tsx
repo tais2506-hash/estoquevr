@@ -119,13 +119,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
-  const getKitItemsDescription = (kitId: string) => {
-    const items = kitItems.filter(ki => ki.kit_id === kitId);
-    return items.map(ki => {
-      const ins = insumos.find(i => i.id === ki.insumo_id);
-      return ins ? `${ins.name} x${ki.quantity} ${ins.unit}` : null;
-    }).filter(Boolean).join(", ");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

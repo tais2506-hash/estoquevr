@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Package, TrendingDown, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Package, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
