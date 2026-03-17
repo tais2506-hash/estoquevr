@@ -1,0 +1,1 @@
+ALTER TABLE public.kits ADD COLUMN obra_id uuid REFERENCES public.obras(id) ON DELETE CASCADE;

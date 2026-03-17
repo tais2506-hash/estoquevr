@@ -584,6 +584,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          obra_id: string | null
           updated_at: string
         }
         Insert: {
@@ -592,6 +593,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          obra_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -600,9 +602,18 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          obra_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kits_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       locations: {
         Row: {

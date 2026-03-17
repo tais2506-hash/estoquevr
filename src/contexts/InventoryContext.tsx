@@ -37,7 +37,7 @@ type SaidaRow = {
   created_at: string;
 };
 type KitRow = {
-  id: string; name: string; description: string;
+  id: string; name: string; description: string; obra_id: string | null;
   deleted_at: string | null; created_at: string; updated_at: string;
 };
 type KitItemRow = {

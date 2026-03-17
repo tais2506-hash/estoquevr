@@ -13,6 +13,7 @@ import UserManagement from "@/components/admin/UserManagement";
 import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
 import DashboardObra from "@/components/dashboard/DashboardObra";
 import DashboardGeral from "@/components/dashboard/DashboardGeral";
+import DashboardKits from "@/components/dashboard/DashboardKits";
 import ReportsPage from "@/components/reports/ReportsPage";
 
 const AdminDashboard = () => {
@@ -95,10 +96,11 @@ const AdminDashboard = () => {
             <TabsList className="inline-flex w-auto">
               <TabsTrigger value="geral">Visão Geral</TabsTrigger>
               <TabsTrigger value="por-obra">Por Obra</TabsTrigger>
+              <TabsTrigger value="dashboard-kits">Kits</TabsTrigger>
               <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
               <TabsTrigger value="obras">Obras</TabsTrigger>
               <TabsTrigger value="insumos">Insumos</TabsTrigger>
-              <TabsTrigger value="kits">Kits</TabsTrigger>
+              <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>
               <TabsTrigger value="locais">Locais</TabsTrigger>
               <TabsTrigger value="servicos">Serviços</TabsTrigger>
               <TabsTrigger value="usuarios">Usuários</TabsTrigger>
@@ -108,6 +110,7 @@ const AdminDashboard = () => {
 
           <TabsContent value="geral"><DashboardGeral /></TabsContent>
           <TabsContent value="por-obra"><DashboardObra /></TabsContent>
+          <TabsContent value="dashboard-kits"><DashboardKits /></TabsContent>
           <TabsContent value="relatorios"><ReportsPage /></TabsContent>
           <TabsContent value="obras"><ObrasCRUD /></TabsContent>
           <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
