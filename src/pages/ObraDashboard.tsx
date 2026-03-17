@@ -542,7 +542,7 @@ const ObraDashboard = () => {
                         );
                       })}
                       {movsObra.length === 0 && (
-                        <tr><td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhuma movimentação registrada</td></tr>
                       )}
                     </tbody>
                   </table>
