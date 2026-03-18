@@ -419,28 +419,34 @@ export type Database = {
           average_unit_cost: number
           id: string
           insumo_id: string
+          lote: string | null
           obra_id: string
           quantity: number
           total_value: number
           updated_at: string
+          validade: string | null
         }
         Insert: {
           average_unit_cost?: number
           id?: string
           insumo_id: string
+          lote?: string | null
           obra_id: string
           quantity?: number
           total_value?: number
           updated_at?: string
+          validade?: string | null
         }
         Update: {
           average_unit_cost?: number
           id?: string
           insumo_id?: string
+          lote?: string | null
           obra_id?: string
           quantity?: number
           total_value?: number
           updated_at?: string
+          validade?: string | null
         }
         Relationships: [
           {

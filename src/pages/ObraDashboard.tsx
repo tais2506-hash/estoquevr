@@ -2,9 +2,9 @@ import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import SubirEstoque from "@/components/operations/SubirEstoque";
 import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
@@ -56,9 +60,14 @@ const ObraDashboard = () => {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [editingEstoque, setEditingEstoque] = useState<any | null>(null);
+  const [editLote, setEditLote] = useState("");
+  const [editValidade, setEditValidade] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra, kits, kitItems } = useInventory();
   const { logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const obra = getSelectedObra();
 
   // Query movimentações filtered by obra_id server-side (avoids 1000 row limit)
@@ -173,6 +182,34 @@ const ObraDashboard = () => {
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao desfazer movimentação");
+    }
+  };
+
+  const openEditEstoque = (item: any) => {
+    setEditingEstoque(item);
+    setEditLote(item.lote || "");
+    setEditValidade(item.validade || "");
+  };
+
+  const handleSaveEstoqueEdit = async () => {
+    if (!editingEstoque) return;
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("estoque")
+        .update({
+          lote: editLote || null,
+          validade: editValidade || null,
+        })
+        .eq("id", editingEstoque.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["estoque"] });
+      toast.success("Lote e validade atualizados");
+      setEditingEstoque(null);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -314,13 +351,14 @@ const ObraDashboard = () => {
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
                         <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">Unit.</th>
                         <th className="text-right p-3 font-medium text-muted-foreground">Total</th>
+                        <th className="w-10 p-3"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.entries(groupedEstoque).map(([category, items]) => (
                         <>{/* Category header */}
                           <tr key={`cat-${category}`} className="bg-muted/30">
-                            <td colSpan={4} className="px-3 py-2">
+                            <td colSpan={5} className="px-3 py-2">
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category}</span>
                               <span className="text-xs text-muted-foreground ml-2">({items.length})</span>
                             </td>
@@ -330,15 +368,26 @@ const ObraDashboard = () => {
                               <td className="p-3">
                                 <p className="font-medium text-foreground">{item.insumo.name}</p>
                                 <p className="text-xs text-muted-foreground font-mono">{item.insumo.code}</p>
+                                {(item.lote || item.validade) && (
+                                  <div className="flex gap-2 mt-0.5">
+                                    {item.lote && <span className="text-xs text-muted-foreground">Lote: {item.lote}</span>}
+                                    {item.validade && <span className="text-xs text-muted-foreground">Val: {item.validade}</span>}
+                                  </div>
+                                )}
                               </td>
                               <td className="p-3 text-right font-mono text-foreground whitespace-nowrap">{item.quantity.toLocaleString("pt-BR")} {item.insumo.unit}</td>
                               <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">{item.average_unit_cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                               <td className="p-3 text-right font-mono font-medium text-foreground">{item.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td className="p-3 text-center">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditEstoque(item)}>
+                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                              </td>
                             </tr>
                           ))}
                         </>
                       ))}
-                      {filteredEstoque.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum item encontrado</td></tr>}
+                      {filteredEstoque.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum item encontrado</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -568,6 +617,35 @@ const ObraDashboard = () => {
           </div>
         ) : renderOperation()}
       </main>
+
+      {/* Edit Lote/Validade Dialog */}
+      <Dialog open={!!editingEstoque} onOpenChange={(open) => { if (!open) setEditingEstoque(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar Lote / Validade</DialogTitle>
+          </DialogHeader>
+          {editingEstoque && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{editingEstoque.insumo?.name}</p>
+              <div className="space-y-2">
+                <Label htmlFor="edit-lote">Lote</Label>
+                <Input id="edit-lote" value={editLote} onChange={e => setEditLote(e.target.value)} placeholder="Ex: L2024-001" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-validade">Validade</Label>
+                <Input id="edit-validade" type="date" value={editValidade} onChange={e => setEditValidade(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEstoque(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEstoqueEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
