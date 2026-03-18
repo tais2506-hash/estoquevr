@@ -138,6 +138,17 @@ const OrdensCompra = ({ onBack }: { onBack: () => void }) => {
     } catch { toast.error("Erro ao reabrir OC"); }
   };
 
+  const handleDeleteOc = async (ocId: string) => {
+    try {
+      await supabase.from("oc_items").delete().eq("oc_id", ocId);
+      await supabase.from("ordens_compra").delete().eq("id", ocId);
+      toast.success("OC excluída");
+      setExpandedOcId(null);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["oc_items"] });
+    } catch { toast.error("Erro ao excluir OC"); }
+  };
+
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
 
