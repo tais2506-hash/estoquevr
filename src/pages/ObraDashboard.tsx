@@ -351,13 +351,14 @@ const ObraDashboard = () => {
                         <th className="text-right p-3 font-medium text-muted-foreground">Qtd</th>
                         <th className="text-right p-3 font-medium text-muted-foreground hidden sm:table-cell">Unit.</th>
                         <th className="text-right p-3 font-medium text-muted-foreground">Total</th>
+                        <th className="w-10 p-3"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.entries(groupedEstoque).map(([category, items]) => (
                         <>{/* Category header */}
                           <tr key={`cat-${category}`} className="bg-muted/30">
-                            <td colSpan={4} className="px-3 py-2">
+                            <td colSpan={5} className="px-3 py-2">
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category}</span>
                               <span className="text-xs text-muted-foreground ml-2">({items.length})</span>
                             </td>
@@ -367,15 +368,26 @@ const ObraDashboard = () => {
                               <td className="p-3">
                                 <p className="font-medium text-foreground">{item.insumo.name}</p>
                                 <p className="text-xs text-muted-foreground font-mono">{item.insumo.code}</p>
+                                {(item.lote || item.validade) && (
+                                  <div className="flex gap-2 mt-0.5">
+                                    {item.lote && <span className="text-xs text-muted-foreground">Lote: {item.lote}</span>}
+                                    {item.validade && <span className="text-xs text-muted-foreground">Val: {item.validade}</span>}
+                                  </div>
+                                )}
                               </td>
                               <td className="p-3 text-right font-mono text-foreground whitespace-nowrap">{item.quantity.toLocaleString("pt-BR")} {item.insumo.unit}</td>
                               <td className="p-3 text-right font-mono text-muted-foreground hidden sm:table-cell">{item.average_unit_cost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                               <td className="p-3 text-right font-mono font-medium text-foreground">{item.total_value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td className="p-3 text-center">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditEstoque(item)}>
+                                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                </Button>
+                              </td>
                             </tr>
                           ))}
                         </>
                       ))}
-                      {filteredEstoque.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhum item encontrado</td></tr>}
+                      {filteredEstoque.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum item encontrado</td></tr>}
                     </tbody>
                   </table>
                 </div>
