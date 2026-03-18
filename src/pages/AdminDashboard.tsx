@@ -105,7 +105,6 @@ const AdminDashboard = () => {
               {(isAdmin || hasPermission("relatorios.visualizar")) && <TabsTrigger value="relatorios">Relatórios</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.obras")) && <TabsTrigger value="obras">Obras</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.insumos")) && <TabsTrigger value="insumos">Insumos</TabsTrigger>}
-              {(isAdmin || hasPermission("cadastro.kits")) && <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.locais")) && <TabsTrigger value="locais">Locais</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.servicos")) && <TabsTrigger value="servicos">Serviços</TabsTrigger>}
               {(isAdmin || hasPermission("admin.usuarios")) && <TabsTrigger value="usuarios">Usuários</TabsTrigger>}
