@@ -11,7 +11,12 @@ import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-const KitsCRUD = () => {
+interface KitsCRUDProps {
+  obraId?: string;
+  onBack?: () => void;
+}
+
+const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
   const { kits, kitItems, insumos, obras } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");

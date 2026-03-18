@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
-import KitsCRUD from "@/components/admin/KitsCRUD";
+
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import UserManagement from "@/components/admin/UserManagement";
 import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";

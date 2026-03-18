@@ -20,8 +20,9 @@ import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
 import InventarioConferencia from "@/components/operations/InventarioConferencia";
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
+import KitsCRUD from "@/components/admin/KitsCRUD";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
