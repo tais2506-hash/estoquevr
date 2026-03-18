@@ -337,11 +337,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                     {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
                     <SearchableSelect
                       options={estoqueObra
-                        .filter(e => !usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId)
+                        .filter(e => e.insumo && (!usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId))
                         .map(e => ({
                           value: e.insumo_id,
-                          label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
-                          searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
+                          label: `${e.insumo?.name || "—"} — Disp: ${e.quantity} ${e.insumo?.unit || ""}`,
+                          searchTerms: e.insumo?.code || "",
                         }))}
                       value={item.insumoId}
                       onValueChange={v => updateItemLine(idx, "insumoId", v)}
