@@ -55,7 +55,7 @@ const ObraSelect = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isAdmin && (
+            {(isAdmin || hasPermission("dashboard.geral") || hasPermission("dashboard.obra") || hasPermission("cadastro.obras") || hasPermission("cadastro.insumos") || hasPermission("admin.usuarios") || hasPermission("admin.perfis") || hasPermission("relatorios.visualizar")) && (
               <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Menu
