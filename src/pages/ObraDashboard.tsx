@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,9 @@ import InventarioConferencia from "@/components/operations/InventarioConferencia
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 import KitsCRUD from "@/components/admin/KitsCRUD";
+import OrdensCompra from "@/components/operations/OrdensCompra";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
@@ -32,6 +33,7 @@ const operations = [
   { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
   { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
+  { key: "oc" as const, label: "Ordens de Compra", icon: ShoppingCart, description: "Controlar saldo de OC", color: "text-emerald-600", permission: "oc.gerenciar" },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -183,6 +185,7 @@ const ObraDashboard = () => {
       case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
       case "kits": return <KitsCRUD obraId={selectedObraId!} onBack={() => setView("menu")} />;
+      case "oc": return <OrdensCompra onBack={() => setView("menu")} />;
       default: return null;
     }
   };

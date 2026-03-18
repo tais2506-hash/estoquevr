@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +14,55 @@ type Step = "choose" | "manual" | "importar" | "done";
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, selectedObraId, addEntrada } = useInventory();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("choose");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0],
-    validade: "", lote: "",
+    validade: "", lote: "", ocItemId: "",
   });
 
   const totalValue = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitValue) || 0);
+
+  // Fetch open OCs for this obra
+  const { data: ordensCompra = [] } = useQuery({
+    queryKey: ["ordens_compra", selectedObraId],
+    queryFn: async () => {
+      if (!selectedObraId) return [];
+      const { data, error } = await supabase
+        .from("ordens_compra").select("*").eq("obra_id", selectedObraId).eq("status", "aberta").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedObraId,
+  });
+
+  const { data: ocItems = [] } = useQuery({
+    queryKey: ["oc_items", selectedObraId],
+    queryFn: async () => {
+      const ocIds = ordensCompra.map(oc => oc.id);
+      if (ocIds.length === 0) return [];
+      const { data, error } = await supabase.from("oc_items").select("*").in("oc_id", ocIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: ordensCompra.length > 0,
+  });
+
+  // OC item options filtered by selected insumo
+  const ocItemOptions = useMemo(() => {
+    if (!formData.insumoId) return [];
+    return ocItems
+      .filter(it => it.insumo_id === formData.insumoId && Number(it.quantity) > Number(it.quantity_delivered))
+      .map(it => {
+        const oc = ordensCompra.find(o => o.id === it.oc_id);
+        const saldo = Number(it.quantity) - Number(it.quantity_delivered);
+        return {
+          value: it.id,
+          label: `${oc?.numero_oc || "OC"} — Saldo: ${saldo.toLocaleString("pt-BR")}`,
+        };
+      });
+  }, [formData.insumoId, ocItems, ordensCompra]);
 
   const insumoOptions = useMemo(() =>
     insumos.map(i => ({
@@ -45,10 +88,23 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         totalValue, date: formData.date,
         validade: formData.validade || undefined,
         lote: formData.lote || undefined,
+        ocItemId: formData.ocItemId || undefined,
       });
+
+      // Update OC item delivered quantity
+      if (formData.ocItemId) {
+        const ocItem = ocItems.find(i => i.id === formData.ocItemId);
+        if (ocItem) {
+          const newDelivered = Number(ocItem.quantity_delivered) + parseFloat(formData.quantity);
+          await supabase.from("oc_items").update({ quantity_delivered: newDelivered }).eq("id", formData.ocItemId);
+          queryClient.invalidateQueries({ queryKey: ["oc_items"] });
+          queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
+        }
+      }
+
       toast.success("Entrada registrada com sucesso!");
       setStep("done");
-    } catch (err) {
+    } catch {
       toast.error("Erro ao registrar entrada");
     } finally {
       setIsSubmitting(false);
@@ -64,7 +120,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <h2 className="text-xl font-bold text-foreground mb-2">Entrada Registrada!</h2>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={onBack}>Voltar ao Menu</Button>
-          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0], validade: "", lote: "" }); }}>
+          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0], validade: "", lote: "", ocItemId: "" }); }}>
             Nova Entrada
           </Button>
         </div>
@@ -118,6 +174,21 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
             emptyMessage="Nenhum insumo encontrado."
           />
         </div>
+
+        {/* OC link (optional) */}
+        {ocItemOptions.length > 0 && (
+          <div className="space-y-2">
+            <Label>Vincular à OC <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <SearchableSelect
+              options={ocItemOptions}
+              value={formData.ocItemId}
+              onValueChange={v => setFormData(p => ({ ...p, ocItemId: v }))}
+              placeholder="Selecione a OC (opcional)"
+              searchPlaceholder="Buscar OC..."
+              emptyMessage="Nenhuma OC com saldo."
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

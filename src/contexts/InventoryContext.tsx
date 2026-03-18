@@ -73,7 +73,7 @@ interface InventoryContextType {
   getSelectedObra: () => ObraRow | undefined;
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
-  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => Promise<void>;
+  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string; ocItemId?: string }) => Promise<void>;
   addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string; lote?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
@@ -258,7 +258,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userId, user]);
 
-  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => {
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string; ocItemId?: string }) => {
     if (!userId) return;
     const insumo = insumos.find(i => i.id === data.insumoId);
 
@@ -270,6 +270,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       user_id: userId,
       validade: data.validade || null,
       lote: data.lote || null,
+      oc_item_id: data.ocItemId || null,
     } as any).select().single();
     if (error) throw error;
 
