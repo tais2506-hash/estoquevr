@@ -12,6 +12,8 @@ import { Plus, Pencil, Trash2, Search, ChevronRight, ChevronDown, MapPin } from 
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import SpreadsheetImport from "./SpreadsheetImport";
+import BulkLocationGenerator from "./BulkLocationGenerator";
+import DuplicateLocationStructure from "./DuplicateLocationStructure";
 
 const locationColumns = [
   { key: "name", label: "Nome", required: true, example: "Apt 101" },
