@@ -168,6 +168,20 @@ const LocationsCRUD = () => {
       return { obraId, parentId: currentParentId };
     };
 
+    // Fetch all existing locations upfront for duplicate checking
+    const { data: existingLocs } = await supabase.from("locations").select("id, name, obra_id, parent_id, type").is("deleted_at", null);
+    const existingSet = new Set(
+      (existingLocs || []).map(l => `${l.name.toLowerCase().trim()}|${l.obra_id}|${l.parent_id || "null"}|${l.type}`)
+    );
+
+    const isDuplicate = (name: string, obraId: string, parentId: string | null, type: string) => {
+      return existingSet.has(`${name.toLowerCase().trim()}|${obraId}|${parentId || "null"}|${type}`);
+    };
+
+    const addToExisting = (name: string, obraId: string, parentId: string | null, type: string) => {
+      existingSet.add(`${name.toLowerCase().trim()}|${obraId}|${parentId || "null"}|${type}`);
+    };
+
     const rootRows: { row: Record<string, string>; idx: number; obraId: string }[] = [];
     const childRows: { row: Record<string, string>; idx: number; parentPath: string }[] = [];
 
@@ -201,17 +215,22 @@ const LocationsCRUD = () => {
     });
 
     for (const { row, idx, obraId } of rootRows) {
+      const type = row.type.toLowerCase().trim();
+      if (isDuplicate(row.name, obraId, null, type)) {
+        skipped++;
+        continue;
+      }
       const { error } = await supabase.from("locations").insert({
         name: row.name,
-        type: row.type.toLowerCase().trim() as any,
+        type: type as any,
         obra_id: obraId,
         parent_id: null,
       } as any);
       if (error) errors.push({ row: idx, message: error.message });
-      else success++;
+      else { success++; addToExisting(row.name, obraId, null, type); }
     }
 
-    const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id, parent_id").is("deleted_at", null);
+    const { data: allLocs } = await supabase.from("locations").select("id, name, obra_id, parent_id, type").is("deleted_at", null);
 
     for (const { row, idx, parentPath } of childRows) {
       const result = resolvePath(parentPath, allLocs || []);
@@ -219,14 +238,24 @@ const LocationsCRUD = () => {
         errors.push({ row: idx, message: result });
         continue;
       }
-      const { error } = await supabase.from("locations").insert({
+      const type = row.type.toLowerCase().trim();
+      if (isDuplicate(row.name, result.obraId, result.parentId, type)) {
+        skipped++;
+        continue;
+      }
+      const { error, data: inserted } = await supabase.from("locations").insert({
         name: row.name,
-        type: row.type.toLowerCase().trim() as any,
+        type: type as any,
         obra_id: result.obraId,
         parent_id: result.parentId,
-      } as any);
+      } as any).select("id").single();
       if (error) errors.push({ row: idx, message: error.message });
-      else success++;
+      else {
+        success++;
+        addToExisting(row.name, result.obraId, result.parentId, type);
+        // Add to allLocs so subsequent rows can reference this as parent
+        if (inserted) allLocs?.push({ id: inserted.id, name: row.name, obra_id: result.obraId, parent_id: result.parentId, type: type as any });
+      }
     }
 
     queryClient.invalidateQueries({ queryKey: ["locations"] });
