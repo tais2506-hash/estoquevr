@@ -212,7 +212,7 @@ const ObraDashboard = () => {
     }
   };
 
-
+  const renderOperation = () => {
     switch (view) {
       case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
       case "baixar": return <BaixarEstoque onBack={() => setView("menu")} />;
