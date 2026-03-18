@@ -258,7 +258,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userId, user]);
 
-  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string }) => {
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => {
     if (!userId) return;
     const insumo = insumos.find(i => i.id === data.insumoId);
 
@@ -268,7 +268,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       quantity: data.quantity, unit_value: data.unitValue,
       total_value: data.totalValue, date: data.date,
       user_id: userId,
-    }).select().single();
+      validade: data.validade || null,
+      lote: data.lote || null,
+    } as any).select().single();
     if (error) throw error;
 
     if (!insumo?.material_nao_estocavel) {
