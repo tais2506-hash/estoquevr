@@ -258,7 +258,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userId, user]);
 
-  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => {
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string; ocItemId?: string }) => {
     if (!userId) return;
     const insumo = insumos.find(i => i.id === data.insumoId);
 
