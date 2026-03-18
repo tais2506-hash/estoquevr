@@ -33,6 +33,7 @@ const operations = [
   { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
   { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
+  { key: "oc" as const, label: "Ordens de Compra", icon: ShoppingCart, description: "Controlar saldo de OC", color: "text-emerald-600", permission: "oc.gerenciar" },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
