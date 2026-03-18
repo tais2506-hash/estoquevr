@@ -64,7 +64,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <h2 className="text-xl font-bold text-foreground mb-2">Entrada Registrada!</h2>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={onBack}>Voltar ao Menu</Button>
-          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0] }); }}>
+          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0], validade: "", lote: "" }); }}>
             Nova Entrada
           </Button>
         </div>
