@@ -19,6 +19,7 @@ import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
 import InventarioConferencia from "@/components/operations/InventarioConferencia";
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
+import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 
 type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao";
 
