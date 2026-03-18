@@ -60,6 +60,10 @@ const ObraDashboard = () => {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [editingEstoque, setEditingEstoque] = useState<any | null>(null);
+  const [editLote, setEditLote] = useState("");
+  const [editValidade, setEditValidade] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra, kits, kitItems } = useInventory();
   const { logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
