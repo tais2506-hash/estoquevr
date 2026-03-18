@@ -96,37 +96,37 @@ const AdminDashboard = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8 animate-fade-in">
-        <Tabs defaultValue="geral" className="space-y-6">
+        <Tabs defaultValue={isAdmin || hasPermission("dashboard.geral") ? "geral" : isAdmin || hasPermission("dashboard.obra") ? "por-obra" : "relatorios"} className="space-y-6">
           <ScrollArea className="w-full">
             <TabsList className="inline-flex w-auto">
-              <TabsTrigger value="geral">Visão Geral</TabsTrigger>
-              <TabsTrigger value="por-obra">Por Obra</TabsTrigger>
-              <TabsTrigger value="dashboard-kits">Kits</TabsTrigger>
-              <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
-              <TabsTrigger value="obras">Obras</TabsTrigger>
-              <TabsTrigger value="insumos">Insumos</TabsTrigger>
-              <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>
-              <TabsTrigger value="locais">Locais</TabsTrigger>
-              <TabsTrigger value="servicos">Serviços</TabsTrigger>
-              <TabsTrigger value="usuarios">Usuários</TabsTrigger>
-              <TabsTrigger value="perfis">Perfis</TabsTrigger>
-              <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+              {(isAdmin || hasPermission("dashboard.geral")) && <TabsTrigger value="geral">Visão Geral</TabsTrigger>}
+              {(isAdmin || hasPermission("dashboard.obra")) && <TabsTrigger value="por-obra">Por Obra</TabsTrigger>}
+              {(isAdmin || hasPermission("dashboard.kits")) && <TabsTrigger value="dashboard-kits">Kits</TabsTrigger>}
+              {(isAdmin || hasPermission("relatorios.visualizar")) && <TabsTrigger value="relatorios">Relatórios</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.obras")) && <TabsTrigger value="obras">Obras</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.insumos")) && <TabsTrigger value="insumos">Insumos</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.kits")) && <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.locais")) && <TabsTrigger value="locais">Locais</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.servicos")) && <TabsTrigger value="servicos">Serviços</TabsTrigger>}
+              {(isAdmin || hasPermission("admin.usuarios")) && <TabsTrigger value="usuarios">Usuários</TabsTrigger>}
+              {(isAdmin || hasPermission("admin.perfis")) && <TabsTrigger value="perfis">Perfis</TabsTrigger>}
+              {isAdmin && <TabsTrigger value="configuracoes">Configurações</TabsTrigger>}
             </TabsList>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          <TabsContent value="geral"><DashboardGeral /></TabsContent>
-          <TabsContent value="por-obra"><DashboardObra /></TabsContent>
-          <TabsContent value="dashboard-kits"><DashboardKits /></TabsContent>
-          <TabsContent value="relatorios"><ReportsPage /></TabsContent>
-          <TabsContent value="obras"><ObrasCRUD /></TabsContent>
-          <TabsContent value="insumos"><InsumosCRUD /></TabsContent>
-          <TabsContent value="kits"><KitsCRUD /></TabsContent>
-          <TabsContent value="locais"><LocationsCRUD /></TabsContent>
-          <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>
-          <TabsContent value="usuarios"><UserManagement /></TabsContent>
-          <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>
-          <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>
+          {(isAdmin || hasPermission("dashboard.geral")) && <TabsContent value="geral"><DashboardGeral /></TabsContent>}
+          {(isAdmin || hasPermission("dashboard.obra")) && <TabsContent value="por-obra"><DashboardObra /></TabsContent>}
+          {(isAdmin || hasPermission("dashboard.kits")) && <TabsContent value="dashboard-kits"><DashboardKits /></TabsContent>}
+          {(isAdmin || hasPermission("relatorios.visualizar")) && <TabsContent value="relatorios"><ReportsPage /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.obras")) && <TabsContent value="obras"><ObrasCRUD /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.insumos")) && <TabsContent value="insumos"><InsumosCRUD /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.kits")) && <TabsContent value="kits"><KitsCRUD /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.locais")) && <TabsContent value="locais"><LocationsCRUD /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.servicos")) && <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>}
+          {(isAdmin || hasPermission("admin.usuarios")) && <TabsContent value="usuarios"><UserManagement /></TabsContent>}
+          {(isAdmin || hasPermission("admin.perfis")) && <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>}
+          {isAdmin && <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>}
         </Tabs>
       </main>
     </div>
