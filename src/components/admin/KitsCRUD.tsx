@@ -33,7 +33,7 @@ const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
     return result;
   }, [kits, search, obraId]);
 
-  const resetForm = () => { setForm({ name: "", description: "", obra_id: "" }); setEditing(null); setItems([]); };
+  const resetForm = () => { setForm({ name: "", description: "", obra_id: obraId || "" }); setEditing(null); setItems([]); };
 
   const openEdit = (kit: any) => {
     setEditing(kit);
