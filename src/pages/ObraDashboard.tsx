@@ -28,6 +28,7 @@ const operations = [
   { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive", permission: "estoque.saida.criar" },
   { key: "requisicao" as const, label: "Requisição de Canteiro", icon: FileText, description: "Solicitar materiais online", color: "text-amber-500", permission: "requisicao.criar" },
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
+  { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
 ];
 
