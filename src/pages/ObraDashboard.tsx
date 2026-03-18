@@ -617,6 +617,35 @@ const ObraDashboard = () => {
           </div>
         ) : renderOperation()}
       </main>
+
+      {/* Edit Lote/Validade Dialog */}
+      <Dialog open={!!editingEstoque} onOpenChange={(open) => { if (!open) setEditingEstoque(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar Lote / Validade</DialogTitle>
+          </DialogHeader>
+          {editingEstoque && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{editingEstoque.insumo?.name}</p>
+              <div className="space-y-2">
+                <Label htmlFor="edit-lote">Lote</Label>
+                <Input id="edit-lote" value={editLote} onChange={e => setEditLote(e.target.value)} placeholder="Ex: L2024-001" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-validade">Validade</Label>
+                <Input id="edit-validade" type="date" value={editValidade} onChange={e => setEditValidade(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEstoque(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEstoqueEdit} disabled={isSavingEdit}>
+              {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
