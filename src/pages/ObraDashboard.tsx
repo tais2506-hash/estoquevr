@@ -21,7 +21,7 @@ import InventarioConferencia from "@/components/operations/InventarioConferencia
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
