@@ -44,6 +44,15 @@ const InsumosCRUD = () => {
     };
     fetchLists();
   }, []);
+
+  useEffect(() => {
+    if (!showInactive) { setInactiveInsumos([]); return; }
+    const fetchInactive = async () => {
+      const { data } = await supabase.from("insumos").select("*").not("deleted_at", "is", null).order("name");
+      setInactiveInsumos((data as any[]) || []);
+    };
+    fetchInactive();
+  }, [showInactive, insumos]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
