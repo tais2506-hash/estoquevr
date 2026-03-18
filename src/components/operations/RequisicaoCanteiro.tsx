@@ -341,7 +341,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                       <Label className="text-xs text-muted-foreground">Insumo</Label>
                       <SearchableSelect
                         options={estoqueObra
-                          .filter(e => e.insumo && (!usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId))
+                          .filter(e => e.insumo)
                           .map(e => ({
                             value: e.insumo_id,
                             label: `${e.insumo?.name || "—"} — Disp: ${e.quantity} ${e.insumo?.unit || ""}`,
