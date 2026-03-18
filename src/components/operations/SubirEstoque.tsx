@@ -175,6 +175,21 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           />
         </div>
 
+        {/* OC link (optional) */}
+        {ocItemOptions.length > 0 && (
+          <div className="space-y-2">
+            <Label>Vincular à OC <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <SearchableSelect
+              options={ocItemOptions}
+              value={formData.ocItemId}
+              onValueChange={v => setFormData(p => ({ ...p, ocItemId: v }))}
+              placeholder="Selecione a OC (opcional)"
+              searchPlaceholder="Buscar OC..."
+              emptyMessage="Nenhuma OC com saldo."
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Nota Fiscal</Label>
