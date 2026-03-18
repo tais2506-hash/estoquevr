@@ -142,7 +142,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
 
-  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
