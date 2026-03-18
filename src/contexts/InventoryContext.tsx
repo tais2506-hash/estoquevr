@@ -421,24 +421,50 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const refId = mov.reference_id;
     if (!refId) throw new Error("Referência da transferência não encontrada");
 
-    const { data: transf, error } = await supabase.from("transferencias").select("*").eq("id", refId).single();
-    if (error || !transf) throw new Error("Registro de transferência não encontrado");
+    // Try transferencias table first, then emprestimos
+    const { data: transf } = await supabase.from("transferencias").select("*").eq("id", refId).maybeSingle();
+
+    let origemId: string;
+    let destinoId: string;
+    let insumoId: string;
+    let quantity: number;
+    let auditTable: string;
+
+    if (transf) {
+      origemId = transf.obra_origem_id;
+      destinoId = transf.obra_destino_id;
+      insumoId = transf.insumo_id;
+      quantity = transf.quantity;
+      auditTable = "transferencias";
+    } else {
+      // Check emprestimos table
+      const { data: emp, error: empErr } = await supabase.from("emprestimos").select("*").eq("id", refId).maybeSingle();
+      if (empErr || !emp) throw new Error("Registro de transferência/empréstimo não encontrado");
+      origemId = emp.obra_emprestadora_id;
+      destinoId = emp.obra_solicitante_id;
+      insumoId = emp.insumo_id;
+      quantity = emp.quantity;
+      auditTable = "emprestimos";
+
+      // Revert empréstimo status back to pendente
+      await supabase.from("emprestimos").update({ status: "pendente", aprovador_user_id: null, aprovador_nome: null } as any).eq("id", refId);
+    }
 
     // Reverse: add back to origin, remove from destination
-    const estoqueOrig = estoque.find(e => e.obra_id === transf.obra_origem_id && e.insumo_id === transf.insumo_id);
-    const estoqDest = estoque.find(e => e.obra_id === transf.obra_destino_id && e.insumo_id === transf.insumo_id);
+    const estoqueOrig = estoque.find(e => e.obra_id === origemId && e.insumo_id === insumoId);
+    const estoqDest = estoque.find(e => e.obra_id === destinoId && e.insumo_id === insumoId);
     const unitCostOrig = estoqueOrig ? estoqueOrig.average_unit_cost : (estoqDest ? estoqDest.average_unit_cost : 0);
     const unitCostDest = estoqDest ? estoqDest.average_unit_cost : unitCostOrig;
 
-    await updateEstoque(transf.obra_origem_id, transf.insumo_id, transf.quantity, transf.quantity * unitCostDest);
-    await updateEstoque(transf.obra_destino_id, transf.insumo_id, -transf.quantity, -(transf.quantity * unitCostDest));
+    await updateEstoque(origemId, insumoId, quantity, quantity * unitCostDest);
+    await updateEstoque(destinoId, insumoId, -quantity, -(quantity * unitCostDest));
 
     // Soft-delete both movimentacoes linked to this transfer
     const relatedMovs = movimentacoes.filter(m => m.reference_id === refId && (m.type === "transferencia_saida" || m.type === "transferencia_entrada"));
     for (const rm of relatedMovs) {
       await supabase.from("movimentacoes").update({ deleted_at: new Date().toISOString() }).eq("id", rm.id);
     }
-    await addAuditLog("desfazer_transferencia", "transferencias", refId, transf.obra_origem_id, transf, null);
+    await addAuditLog("desfazer_transferencia", auditTable, refId, origemId, { origemId, destinoId, insumoId, quantity }, null);
     refetchAll();
   }, [userId, movimentacoes, estoque, updateEstoque, addAuditLog, refetchAll]);
 
