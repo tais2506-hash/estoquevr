@@ -20,7 +20,7 @@ import ConfiguracoesCRUD from "@/components/admin/ConfiguracoesCRUD";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
