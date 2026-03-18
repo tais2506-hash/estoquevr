@@ -254,7 +254,7 @@ const LocationsCRUD = () => {
         success++;
         addToExisting(row.name, result.obraId, result.parentId, type);
         // Add to allLocs so subsequent rows can reference this as parent
-        if (inserted) allLocs?.push({ id: inserted.id, name: row.name, obra_id: result.obraId, parent_id: result.parentId, type });
+        if (inserted) allLocs?.push({ id: inserted.id, name: row.name, obra_id: result.obraId, parent_id: result.parentId, type: type as any });
       }
     }
 
