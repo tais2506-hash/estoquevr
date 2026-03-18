@@ -14,6 +14,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import SubirEstoque from "@/components/operations/SubirEstoque";
 import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
