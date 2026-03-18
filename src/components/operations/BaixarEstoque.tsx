@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CascadingLocationSelect } from "@/components/ui/cascading-location-select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
