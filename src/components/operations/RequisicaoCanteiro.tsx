@@ -137,7 +137,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return parts.join(" > ");
   };
   // --- Multi-item helpers ---
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
