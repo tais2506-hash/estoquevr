@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,20 @@ const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
+  const [dbUnits, setDbUnits] = useState<{ id: string; name: string; abbreviation: string }[]>([]);
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      const [catRes, unitRes] = await Promise.all([
+        supabase.from("insumo_categories").select("id, name").order("sort_order"),
+        supabase.from("insumo_units").select("id, name, abbreviation").order("sort_order"),
+      ]);
+      if (catRes.data) setDbCategories(catRes.data);
+      if (unitRes.data) setDbUnits(unitRes.data);
+    };
+    fetchLists();
+  }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
@@ -212,10 +226,30 @@ const InsumosCRUD = () => {
                 <div className="space-y-2"><Label>Nome</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do insumo" /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2"><Label>Código</Label><Input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="Ex: INS-001" /></div>
-                  <div className="space-y-2"><Label>Unidade</Label><Input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="Ex: kg, un, m" /></div>
+                  <div className="space-y-2">
+                    <Label>Unidade</Label>
+                    <Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                      <SelectContent>
+                        {dbUnits.map(u => (
+                          <SelectItem key={u.id} value={u.abbreviation}>{u.abbreviation} — {u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2"><Label>Categoria</Label><Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="Ex: Elétrico" /></div>
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                      <SelectContent>
+                        {dbCategories.map(c => (
+                          <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2"><Label>Estoque Mínimo</Label><Input type="number" min="0" step="any" value={form.estoque_minimo} onChange={e => setForm({ ...form, estoque_minimo: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
