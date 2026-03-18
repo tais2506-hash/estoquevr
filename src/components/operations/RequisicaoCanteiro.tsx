@@ -95,6 +95,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedObraId, queryClient]);
 
+  const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
+  const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
+
   // Group pending requisitions by created_at timestamp + responsavel
   const pendingGroups = useMemo(() => {
     const pending = requisicoes.filter(r => r.status === "pendente");
@@ -131,10 +134,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     }
     return parts.join(" > ");
   };
-
-  const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
-  const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
-
   // --- Multi-item helpers ---
   const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
