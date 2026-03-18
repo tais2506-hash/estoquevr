@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CascadingLocationSelect } from "@/components/ui/cascading-location-select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -444,13 +445,10 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           {obraLocations.length > 0 ? (
             <div className="space-y-2">
               <Label>Local de Aplicação</Label>
-              <SearchableSelect
-                options={obraLocations.map(l => ({ value: l.id, label: getLocationPath(l.id) }))}
+              <CascadingLocationSelect
+                locations={obraLocations}
                 value={formData.locationId}
                 onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-                placeholder="Selecione o local"
-                searchPlaceholder="Buscar local..."
-                emptyMessage="Nenhum local encontrado."
               />
             </div>
           ) : (
