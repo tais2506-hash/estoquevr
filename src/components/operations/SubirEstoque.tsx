@@ -141,6 +141,17 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <Input value={formData.lote} onChange={e => setFormData(p => ({ ...p, lote: e.target.value }))} placeholder="Ex: LT-2026-001" />
+          </div>
+          <div className="space-y-2">
+            <Label>Validade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <Input type="date" value={formData.validade} onChange={e => setFormData(p => ({ ...p, validade: e.target.value }))} />
+          </div>
+        </div>
+
         <div className="bg-muted/50 rounded-lg p-3">
           <p className="text-xs text-muted-foreground">Valor Total</p>
           <p className="text-lg font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
