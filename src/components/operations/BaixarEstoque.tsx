@@ -27,6 +27,15 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
   const maxQty = selectedItem?.quantity || 0;
 
+  // Available lots for selected insumo
+  const availableLots = useMemo(() => {
+    if (!selectedObraId || !formData.insumoId) return [];
+    const lots = entradas
+      .filter((e: any) => e.obra_id === selectedObraId && e.insumo_id === formData.insumoId && e.lote)
+      .map((e: any) => e.lote as string);
+    return Array.from(new Set(lots)).sort();
+  }, [entradas, selectedObraId, formData.insumoId]);
+
   const obraLocations = useMemo(() =>
     locations.filter(l => l.obra_id === selectedObraId),
     [locations, selectedObraId]
