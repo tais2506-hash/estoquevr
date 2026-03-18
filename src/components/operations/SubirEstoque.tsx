@@ -16,6 +16,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0],
+    validade: "", lote: "",
   });
 
   const totalValue = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitValue) || 0);
