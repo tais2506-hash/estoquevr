@@ -338,6 +338,7 @@ export type Database = {
           lote: string | null
           nota_fiscal: string
           obra_id: string
+          oc_item_id: string | null
           quantity: number
           total_value: number
           unit_value: number
@@ -356,6 +357,7 @@ export type Database = {
           lote?: string | null
           nota_fiscal: string
           obra_id: string
+          oc_item_id?: string | null
           quantity: number
           total_value: number
           unit_value: number
@@ -374,6 +376,7 @@ export type Database = {
           lote?: string | null
           nota_fiscal?: string
           obra_id?: string
+          oc_item_id?: string | null
           quantity?: number
           total_value?: number
           unit_value?: number
@@ -400,6 +403,13 @@ export type Database = {
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_oc_item_id_fkey"
+            columns: ["oc_item_id"]
+            isOneToOne: false
+            referencedRelation: "oc_items"
             referencedColumns: ["id"]
           },
         ]
@@ -927,6 +937,89 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      oc_items: {
+        Row: {
+          created_at: string
+          id: string
+          insumo_id: string
+          oc_id: string
+          quantity: number
+          quantity_delivered: number
+          unit_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insumo_id: string
+          oc_id: string
+          quantity: number
+          quantity_delivered?: number
+          unit_value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          oc_id?: string
+          quantity?: number
+          quantity_delivered?: number
+          unit_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oc_items_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oc_items_oc_id_fkey"
+            columns: ["oc_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_compra: {
+        Row: {
+          created_at: string
+          id: string
+          numero_oc: string
+          obra_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          numero_oc: string
+          obra_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          numero_oc?: string
+          obra_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_compra_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permission_profiles: {
         Row: {
