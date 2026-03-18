@@ -226,7 +226,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setItems([{ insumoId: "", quantity: "" }]);
+    setItems([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
     setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
   };
 
