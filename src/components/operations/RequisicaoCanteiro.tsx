@@ -463,20 +463,22 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Quem vai retirar o material" />
           </div>
 
-          {obraLocations.length > 0 ? (
-            <div className="space-y-2">
-              <Label>Local de Aplicação</Label>
-              <CascadingLocationSelect
-                locations={obraLocations}
-                value={formData.locationId}
-                onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Local de Aplicação</Label>
-              <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
-            </div>
+          {mode === "kit" && (
+            obraLocations.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Local de Aplicação</Label>
+                <CascadingLocationSelect
+                  locations={obraLocations}
+                  value={formData.locationId}
+                  onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Local de Aplicação</Label>
+                <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
+              </div>
+            )
           )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
