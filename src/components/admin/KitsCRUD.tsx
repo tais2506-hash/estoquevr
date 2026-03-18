@@ -93,20 +93,16 @@ const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex gap-3 flex-1 min-w-0">
+        <div className="flex gap-3 flex-1 min-w-0 items-center">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <X className="w-4 h-4" />
+            </Button>
+          )}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar kits..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
-          <Select value={selectedObraFilter} onValueChange={setSelectedObraFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Todas as obras" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as obras</SelectItem>
-              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
