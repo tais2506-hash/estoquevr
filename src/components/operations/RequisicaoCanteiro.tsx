@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, FileText, Check, X, Clock, Package } from "lucide-react";
+import { ArrowLeft, FileText, Check, X, Clock, Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,11 +31,18 @@ interface Requisicao {
   kit_id: string | null;
 }
 
-interface KitGroup {
-  kit_id: string;
-  kitName: string;
-  kitDescription: string;
+interface ReqGroup {
+  groupKey: string;
+  label: string;
+  isKit: boolean;
+  kitName?: string;
+  kitDescription?: string;
   requisicoes: Requisicao[];
+}
+
+interface ItemLinha {
+  insumoId: string;
+  quantity: string;
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
@@ -45,8 +52,11 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [tab, setTab] = useState<"nova" | "pendentes" | "historico">("nova");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
+
+  // Multi-item state
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "" }]);
   const [formData, setFormData] = useState({
-    insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
+    kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
   });
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -84,22 +94,26 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedObraId, queryClient]);
 
-  // Separate individual and kit requisitions
-  const pendentesIndividuais = requisicoes.filter(r => r.status === "pendente" && !r.kit_id);
-  const pendentesKitGroups = useMemo(() => {
-    const kitReqs = requisicoes.filter(r => r.status === "pendente" && r.kit_id);
+  // Group pending requisitions by created_at timestamp + responsavel
+  const pendingGroups = useMemo(() => {
+    const pending = requisicoes.filter(r => r.status === "pendente");
     const groups: Record<string, Requisicao[]> = {};
-    kitReqs.forEach(r => {
-      const key = `${r.kit_id}-${r.created_at.substring(0, 19)}-${r.responsavel}`;
+    pending.forEach(r => {
+      const key = r.kit_id
+        ? `kit-${r.kit_id}-${r.created_at.substring(0, 19)}-${r.responsavel}`
+        : `ind-${r.created_at.substring(0, 19)}-${r.responsavel}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(r);
     });
-    return Object.entries(groups).map(([, reqs]): KitGroup => {
-      const kit = kits.find(k => k.id === reqs[0].kit_id);
+    return Object.entries(groups).map(([groupKey, reqs]): ReqGroup => {
+      const isKit = !!reqs[0].kit_id;
+      const kit = isKit ? kits.find(k => k.id === reqs[0].kit_id) : undefined;
       return {
-        kit_id: reqs[0].kit_id!,
-        kitName: kit?.name || "Kit",
-        kitDescription: kit?.description || "",
+        groupKey,
+        label: isKit ? kit?.name || "Kit" : reqs.length === 1 ? getInsumoName(reqs[0].insumo_id) : `${reqs.length} itens`,
+        isKit,
+        kitName: kit?.name,
+        kitDescription: kit?.description || undefined,
         requisicoes: reqs,
       };
     });
@@ -120,13 +134,22 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
   const getInsumoUnit = (id: string) => insumos.find(i => i.id === id)?.unit || "";
 
+  // --- Multi-item helpers ---
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "" }]);
+  const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+
+  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedObraId || !user || isSubmitting) return;
 
     if (mode === "insumo") {
-      if (!formData.insumoId || !formData.quantity || !formData.responsavel) {
-        toast.error("Preencha todos os campos obrigatórios");
+      const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0);
+      if (validItems.length === 0 || !formData.responsavel) {
+        toast.error("Adicione pelo menos um insumo com quantidade e preencha o responsável");
         return;
       }
       setIsSubmitting(true);
@@ -134,20 +157,23 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
         const localAplicacao = formData.locationId
           ? getLocationPath(formData.locationId)
           : formData.localAplicacao || "Não especificado";
+        const now = new Date().toISOString();
 
-        const { error } = await supabase.from("requisicoes").insert({
+        const rows = validItems.map(it => ({
           obra_id: selectedObraId,
-          insumo_id: formData.insumoId,
-          quantity: parseFloat(formData.quantity),
+          insumo_id: it.insumoId,
+          quantity: parseFloat(it.quantity),
           local_aplicacao: localAplicacao,
           location_id: formData.locationId || null,
           responsavel: formData.responsavel,
           solicitante_nome: formData.solicitanteNome || user.name,
           date: formData.date,
           user_id: user.id,
-        });
+          created_at: now,
+        }));
+        const { error } = await supabase.from("requisicoes").insert(rows);
         if (error) throw error;
-        toast.success("Requisição enviada! Aguardando aprovação do almoxarifado.");
+        toast.success(`Requisição enviada com ${validItems.length} ${validItems.length === 1 ? "item" : "itens"}!`);
         resetForm();
         setTab("pendentes");
       } catch {
@@ -198,41 +224,14 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
+    setItems([{ insumoId: "", quantity: "" }]);
+    setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
   };
 
-  const handleApproveIndividual = async (req: Requisicao) => {
+  const handleApproveGroup = async (group: ReqGroup) => {
     if (!user || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
-      if (!estoqueItem || estoqueItem.quantity < req.quantity) {
-        toast.error(`Estoque insuficiente. Disponível: ${estoqueItem?.quantity || 0} ${getInsumoUnit(req.insumo_id)}`);
-        setIsSubmitting(false);
-        return;
-      }
-      await addSaida({
-        obraId: req.obra_id, insumoId: req.insumo_id, quantity: req.quantity,
-        date: req.date, localAplicacao: req.local_aplicacao, responsavel: req.responsavel,
-        locationId: req.location_id || undefined,
-      });
-      await supabase.from("requisicoes").update({
-        status: "aprovada", approved_by: user.id, approved_at: new Date().toISOString(),
-      } as any).eq("id", req.id);
-      toast.success("Requisição aprovada e baixa realizada!");
-      queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
-    } catch {
-      toast.error("Erro ao aprovar requisição");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleApproveKit = async (group: KitGroup) => {
-    if (!user || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      // Check stock for all items first
       for (const req of group.requisicoes) {
         const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
         if (!estoqueItem || estoqueItem.quantity < req.quantity) {
@@ -241,7 +240,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           return;
         }
       }
-      // Process all items
       for (const req of group.requisicoes) {
         await addSaida({
           obraId: req.obra_id, insumoId: req.insumo_id, quantity: req.quantity,
@@ -252,16 +250,16 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           status: "aprovada", approved_by: user.id, approved_at: new Date().toISOString(),
         } as any).eq("id", req.id);
       }
-      toast.success(`Kit "${group.kitName}" aprovado! ${group.requisicoes.length} itens baixados.`);
+      toast.success(`Requisição aprovada! ${group.requisicoes.length} ${group.requisicoes.length === 1 ? "item baixado" : "itens baixados"}.`);
       queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
     } catch {
-      toast.error("Erro ao aprovar kit");
+      toast.error("Erro ao aprovar requisição");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRejectKit = async (group: KitGroup) => {
+  const handleRejectGroup = async (group: ReqGroup) => {
     if (!user || !rejectReason.trim()) {
       toast.error("Informe o motivo da rejeição");
       return;
@@ -274,28 +272,6 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           approved_by: user.id, approved_at: new Date().toISOString(),
         } as any).eq("id", req.id);
       }
-      toast.success(`Kit "${group.kitName}" rejeitado.`);
-      setRejectingId(null);
-      setRejectReason("");
-      queryClient.invalidateQueries({ queryKey: ["requisicoes", selectedObraId] });
-    } catch {
-      toast.error("Erro ao rejeitar kit");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRejectIndividual = async (reqId: string) => {
-    if (!user || !rejectReason.trim()) {
-      toast.error("Informe o motivo da rejeição");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await supabase.from("requisicoes").update({
-        status: "rejeitada", motivo_rejeicao: rejectReason,
-        approved_by: user.id, approved_at: new Date().toISOString(),
-      } as any).eq("id", reqId);
       toast.success("Requisição rejeitada.");
       setRejectingId(null);
       setRejectReason("");
@@ -316,7 +292,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
-  const pendentesCount = pendentesIndividuais.length + pendentesKitGroups.length;
+  const pendentesCount = pendingGroups.length;
 
   return (
     <div className="animate-fade-in">
@@ -341,10 +317,10 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
       {/* Nova Requisição */}
       {tab === "nova" && (
-        <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
+        <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-xl">
           <div className="flex gap-2 mb-2">
             <Button type="button" variant={mode === "insumo" ? "default" : "outline"} size="sm" onClick={() => setMode("insumo")}>
-              Insumo Individual
+              Insumos
             </Button>
             <Button type="button" variant={mode === "kit" ? "default" : "outline"} size="sm" onClick={() => setMode("kit")}>
               <Package className="w-4 h-4 mr-1" />Kit
@@ -352,33 +328,59 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           </div>
 
           {mode === "insumo" ? (
-            <div className="space-y-2">
-              <Label>Insumo <span className="text-destructive">*</span></Label>
-              <SearchableSelect
-                options={estoqueObra.map(e => ({
-                  value: e.insumo_id,
-                  label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
-                  searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
-                }))}
-                value={formData.insumoId}
-                onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
-                placeholder="Selecione o insumo"
-                searchPlaceholder="Buscar por nome ou código..."
-                emptyMessage="Nenhum insumo encontrado."
-              />
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Itens da requisição</Label>
+              {items.map((item, idx) => (
+                <div key={idx} className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
+                    <SearchableSelect
+                      options={estoqueObra
+                        .filter(e => !usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId)
+                        .map(e => ({
+                          value: e.insumo_id,
+                          label: `${e.insumo.name} — Disp: ${e.quantity} ${e.insumo.unit}`,
+                          searchTerms: insumos.find(i => i.id === e.insumo_id)?.code || "",
+                        }))}
+                      value={item.insumoId}
+                      onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                      placeholder="Selecione o insumo"
+                      searchPlaceholder="Buscar..."
+                      emptyMessage="Nenhum insumo."
+                    />
+                  </div>
+                  <div className="w-24 space-y-1">
+                    {idx === 0 && <Label className="text-xs text-muted-foreground">Qtd</Label>}
+                    <Input
+                      type="number" min="0" step="any"
+                      value={item.quantity}
+                      onChange={e => updateItemLine(idx, "quantity", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  {items.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeItemLine(idx)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={addItemLine}>
+                <Plus className="w-4 h-4 mr-1" /> Adicionar Item
+              </Button>
             </div>
           ) : (
             <div className="space-y-2">
               <Label>Kit <span className="text-destructive">*</span></Label>
               <SearchableSelect
                 options={obraKits.map(k => {
-                  const items = kitItems.filter(ki => ki.kit_id === k.id);
-                  const itemsDesc = items.map(ki => {
+                  const kitItms = kitItems.filter(ki => ki.kit_id === k.id);
+                  const itemsDesc = kitItms.map(ki => {
                     const ins = insumos.find(i => i.id === ki.insumo_id);
                     return ins ? `${ins.name} x${ki.quantity}` : null;
                   }).filter(Boolean).join(", ");
                   const desc = k.description ? `${k.description} — ` : "";
-                  return { value: k.id, label: `${k.name}`, searchTerms: `${desc}${itemsDesc}` };
+                  return { value: k.id, label: k.name, searchTerms: `${desc}${itemsDesc}` };
                 })}
                 value={formData.kitId}
                 onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
@@ -386,18 +388,17 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                 searchPlaceholder="Buscar kit..."
                 emptyMessage="Nenhum kit cadastrado para esta obra."
               />
-              {/* Kit details preview */}
               {formData.kitId && (
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                   {(() => {
                     const kit = obraKits.find(k => k.id === formData.kitId);
-                    const items = kitItems.filter(ki => ki.kit_id === formData.kitId);
+                    const kitItms = kitItems.filter(ki => ki.kit_id === formData.kitId);
                     if (!kit) return null;
                     return (
                       <>
                         {kit.description && <p className="text-xs text-muted-foreground">{kit.description}</p>}
                         <p className="text-xs font-medium text-foreground">Materiais do kit:</p>
-                        {items.map(ki => {
+                        {kitItms.map(ki => {
                           const ins = insumos.find(i => i.id === ki.insumo_id);
                           if (!ins) return null;
                           const estItem = estoqueObra.find(e => e.insumo_id === ki.insumo_id);
@@ -417,18 +418,17 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                   })()}
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>Quantidade (kits) <span className="text-destructive">*</span></Label>
+                <Input type="number" min="1" step="1" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Quantidade {mode === "kit" ? "(kits)" : ""}<span className="text-destructive">*</span></Label>
-              <Input type="number" min="0" step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Data</Label>
-              <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
-            </div>
+          <div className="space-y-2">
+            <Label>Data</Label>
+            <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
           </div>
 
           <div className="space-y-2">
@@ -476,37 +476,68 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             </div>
           )}
 
-          {/* Kit groups */}
-          {pendentesKitGroups.map(group => (
-            <div key={`kit-${group.kit_id}-${group.requisicoes[0].created_at}`} className="bg-card rounded-xl border-2 border-amber-300 p-5 space-y-3">
+          {pendingGroups.map(group => (
+            <div key={group.groupKey} className={`bg-card rounded-xl border-2 ${group.isKit ? "border-amber-300" : group.requisicoes.length > 1 ? "border-primary/30" : "border-border"} p-5 space-y-3`}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-amber-600" />
-                    <p className="font-semibold text-foreground">{group.kitName}</p>
+                    {group.isKit && <Package className="w-4 h-4 text-amber-600" />}
+                    <p className="font-semibold text-foreground">
+                      {group.isKit ? group.kitName : group.requisicoes.length === 1 ? getInsumoName(group.requisicoes[0].insumo_id) : `Requisição com ${group.requisicoes.length} itens`}
+                    </p>
                   </div>
-                  {group.kitDescription && <p className="text-xs text-muted-foreground mt-0.5">{group.kitDescription}</p>}
+                  {group.isKit && group.kitDescription && <p className="text-xs text-muted-foreground mt-0.5">{group.kitDescription}</p>}
                 </div>
-                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-                  <Package className="w-3 h-3 mr-1" />Kit
-                </Badge>
+                {group.isKit ? (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                    <Package className="w-3 h-3 mr-1" />Kit
+                  </Badge>
+                ) : group.requisicoes.length > 1 ? (
+                  <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5">
+                    {group.requisicoes.length} itens
+                  </Badge>
+                ) : (
+                  statusBadge("pendente")
+                )}
               </div>
 
-              {/* Kit items list */}
-              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Itens do kit:</p>
-                {group.requisicoes.map(req => {
-                  const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
-                  const disponivel = estoqueItem?.quantity || 0;
-                  const insuficiente = disponivel < req.quantity;
-                  return (
-                    <div key={req.id} className={`text-sm flex justify-between ${insuficiente ? "text-destructive" : "text-foreground"}`}>
-                      <span>{getInsumoName(req.insumo_id)} — {req.quantity} {getInsumoUnit(req.insumo_id)}</span>
-                      <span className="text-xs">Disp: {disponivel}{insuficiente ? " ⚠️" : ""}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Items list for multi-item or kit */}
+              {(group.requisicoes.length > 1 || group.isKit) && (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{group.isKit ? "Itens do kit:" : "Itens solicitados:"}</p>
+                  {group.requisicoes.map(req => {
+                    const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
+                    const disponivel = estoqueItem?.quantity || 0;
+                    const insuficiente = disponivel < req.quantity;
+                    return (
+                      <div key={req.id} className={`text-sm flex justify-between ${insuficiente ? "text-destructive" : "text-foreground"}`}>
+                        <span>{getInsumoName(req.insumo_id)} — {req.quantity} {getInsumoUnit(req.insumo_id)}</span>
+                        <span className="text-xs">Disp: {disponivel}{insuficiente ? " ⚠️" : ""}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Single item stock info */}
+              {group.requisicoes.length === 1 && !group.isKit && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Qtd: <span className="font-mono font-bold">{group.requisicoes[0].quantity} {getInsumoUnit(group.requisicoes[0].insumo_id)}</span>
+                  </p>
+                  {(() => {
+                    const estoqueItem = estoqueObra.find(e => e.insumo_id === group.requisicoes[0].insumo_id);
+                    const disponivel = estoqueItem?.quantity || 0;
+                    const insuficiente = disponivel < group.requisicoes[0].quantity;
+                    return (
+                      <div className={`text-sm rounded-lg p-2 ${insuficiente ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-muted-foreground"}`}>
+                        Estoque disponível: <span className="font-bold">{disponivel} {getInsumoUnit(group.requisicoes[0].insumo_id)}</span>
+                        {insuficiente && " — Insuficiente!"}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
 
               <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                 <p>📋 Solicitante: <span className="text-foreground">{group.requisicoes[0].solicitante_nome || "—"}</span></p>
@@ -517,74 +548,20 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
 
               {isAlmox && (
                 <>
-                  {rejectingId === `kit-${group.kit_id}-${group.requisicoes[0].created_at}` ? (
-                    <div className="space-y-2">
-                      <Textarea placeholder="Motivo da rejeição do kit..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[60px]" />
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="destructive" onClick={() => handleRejectKit(group)} disabled={isSubmitting}>Confirmar Rejeição</Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancelar</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={() => handleApproveKit(group)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-                        <Check className="w-4 h-4 mr-1" /> Aprovar Kit Completo
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setRejectingId(`kit-${group.kit_id}-${group.requisicoes[0].created_at}`)} disabled={isSubmitting}>
-                        <X className="w-4 h-4 mr-1" /> Rejeitar Kit
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-
-          {/* Individual requisitions */}
-          {pendentesIndividuais.map(req => (
-            <div key={req.id} className="bg-card rounded-xl border border-border p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-semibold text-foreground">{getInsumoName(req.insumo_id)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Qtd: <span className="font-mono font-bold">{req.quantity} {getInsumoUnit(req.insumo_id)}</span>
-                  </p>
-                </div>
-                {statusBadge(req.status)}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                <p>📋 Solicitante: <span className="text-foreground">{req.solicitante_nome || "—"}</span></p>
-                <p>👤 Responsável: <span className="text-foreground">{req.responsavel}</span></p>
-                <p>📍 Local: <span className="text-foreground">{req.local_aplicacao || "—"}</span></p>
-                <p>📅 Data: <span className="text-foreground">{new Date(req.date).toLocaleDateString("pt-BR")}</span></p>
-              </div>
-              {(() => {
-                const estoqueItem = estoqueObra.find(e => e.insumo_id === req.insumo_id);
-                const disponivel = estoqueItem?.quantity || 0;
-                const insuficiente = disponivel < req.quantity;
-                return (
-                  <div className={`text-sm rounded-lg p-2 ${insuficiente ? "bg-destructive/10 text-destructive" : "bg-muted/50 text-muted-foreground"}`}>
-                    Estoque disponível: <span className="font-bold">{disponivel} {getInsumoUnit(req.insumo_id)}</span>
-                    {insuficiente && " — Insuficiente!"}
-                  </div>
-                );
-              })()}
-              {isAlmox && (
-                <>
-                  {rejectingId === req.id ? (
+                  {rejectingId === group.groupKey ? (
                     <div className="space-y-2">
                       <Textarea placeholder="Motivo da rejeição..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="min-h-[60px]" />
                       <div className="flex gap-2">
-                        <Button size="sm" variant="destructive" onClick={() => handleRejectIndividual(req.id)} disabled={isSubmitting}>Confirmar Rejeição</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleRejectGroup(group)} disabled={isSubmitting}>Confirmar Rejeição</Button>
                         <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(""); }}>Cancelar</Button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={() => handleApproveIndividual(req)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
-                        <Check className="w-4 h-4 mr-1" /> Aprovar e Baixar
+                      <Button size="sm" onClick={() => handleApproveGroup(group)} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
+                        <Check className="w-4 h-4 mr-1" /> {group.requisicoes.length > 1 || group.isKit ? "Aprovar Todos" : "Aprovar e Baixar"}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => setRejectingId(req.id)} disabled={isSubmitting}>
+                      <Button size="sm" variant="outline" onClick={() => setRejectingId(group.groupKey)} disabled={isSubmitting}>
                         <X className="w-4 h-4 mr-1" /> Rejeitar
                       </Button>
                     </div>
