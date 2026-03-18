@@ -31,6 +31,7 @@ const operations = [
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
   { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
+  { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
