@@ -316,6 +316,8 @@ const LocationsCRUD = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={collapseAll}>Recolher</Button>
           <Button variant="outline" size="sm" onClick={expandAll}>Expandir</Button>
+          <BulkLocationGenerator obras={obras} />
+          <DuplicateLocationStructure obras={obras} />
           <SpreadsheetImport
             title="Importar Locais"
             columns={locationColumns}
