@@ -339,6 +339,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
 
+        {/* Lote selection */}
+        {mode === "insumo" && availableLots.length > 0 && (
+          <div className="space-y-2">
+            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <SearchableSelect
+              options={[
+                { value: "__none__", label: "Sem lote especificado" },
+                ...availableLots.map(l => ({ value: l, label: l })),
+              ]}
+              value={formData.lote || "__none__"}
+              onValueChange={v => setFormData(p => ({ ...p, lote: v === "__none__" ? "" : v }))}
+              placeholder="Selecione o lote"
+              searchPlaceholder="Buscar lote..."
+              emptyMessage="Nenhum lote encontrado."
+            />
+          </div>
+        )}
+
         {obraServices.length > 0 && (
           <div className="space-y-2">
             <Label>Serviço</Label>
