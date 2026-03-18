@@ -113,15 +113,17 @@ const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
               <DialogTitle>{editing ? "Editar Kit" : "Novo Kit"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Obra <span className="text-destructive">*</span></Label>
-                <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                  <SelectContent>
-                    {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!obraId && (
+                <div className="space-y-2">
+                  <Label>Obra <span className="text-destructive">*</span></Label>
+                  <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                    <SelectContent>
+                      {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Nome <span className="text-destructive">*</span></Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do kit" />
