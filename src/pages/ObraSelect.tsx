@@ -78,7 +78,7 @@ const ObraSelect = () => {
           <div className="text-center py-16 text-muted-foreground">
             <Building2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>Nenhuma obra cadastrada.</p>
-            {isAdmin && <p className="text-sm mt-2">Acesse o Dashboard para cadastrar obras.</p>}
+            {(isAdmin || hasPermission("cadastro.obras")) && <p className="text-sm mt-2">Acesse o Menu para cadastrar obras.</p>}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
