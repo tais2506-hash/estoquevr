@@ -157,22 +157,30 @@ const InsumosCRUD = () => {
     let skipped = 0;
     const errors: { row: number; message: string }[] = [];
 
-    // Get existing codes
-    const { data: existing } = await supabase.from("insumos").select("code");
-    const existingCodes = new Set((existing || []).map(e => e.code));
+    // Get ALL existing codes (including inactive) to prevent duplicates
+    const { data: existing } = await supabase.from("insumos").select("code, name");
+    const existingCodes = new Set((existing || []).map(e => e.code.toLowerCase().trim()));
+    const existingNames = new Set((existing || []).map(e => e.name.toLowerCase().trim()));
 
     const toInsert: any[] = [];
     rows.forEach((row, i) => {
-      const rowNum = i + 2; // header=1, example=2, data starts at 3 but we skip example
+      const rowNum = i + 2;
       if (!row.code || !row.name || !row.unit) {
         errors.push({ row: rowNum, message: "Código, Nome e Unidade são obrigatórios" });
         return;
       }
-      if (existingCodes.has(row.code)) {
+      const codeKey = row.code.toLowerCase().trim();
+      const nameKey = row.name.toLowerCase().trim();
+      if (existingCodes.has(codeKey)) {
         skipped++;
         return;
       }
-      existingCodes.add(row.code);
+      if (existingNames.has(nameKey)) {
+        skipped++;
+        return;
+      }
+      existingCodes.add(codeKey);
+      existingNames.add(nameKey);
       toInsert.push({
         code: row.code,
         name: row.name,
