@@ -142,7 +142,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
 
-  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,7 +341,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                       <Label className="text-xs text-muted-foreground">Insumo</Label>
                       <SearchableSelect
                         options={estoqueObra
-                          .filter(e => e.insumo && (!usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId))
+                          .filter(e => e.insumo)
                           .map(e => ({
                             value: e.insumo_id,
                             label: `${e.insumo?.name || "—"} — Disp: ${e.quantity} ${e.insumo?.unit || ""}`,
