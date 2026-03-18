@@ -20,7 +20,7 @@ const statusLabels: Record<string, string> = {
 
 const ObraSelect = () => {
   const { obras, setSelectedObraId, getEstoqueByObra, loading } = useInventory();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
 
   const handleSelect = (obraId: string) => {
