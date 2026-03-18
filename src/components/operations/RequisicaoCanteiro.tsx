@@ -332,7 +332,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
               <Label className="text-sm font-semibold">Itens da requisição</Label>
               {items.map((item, idx) => (
                 <div key={idx} className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
                     <SearchableSelect
                       options={estoqueObra
@@ -349,7 +349,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                       emptyMessage="Nenhum insumo."
                     />
                   </div>
-                  <div className="w-24 space-y-1">
+                  <div className="w-20 shrink-0 space-y-1">
                     {idx === 0 && <Label className="text-xs text-muted-foreground">Qtd</Label>}
                     <Input
                       type="number" min="0" step="any"
