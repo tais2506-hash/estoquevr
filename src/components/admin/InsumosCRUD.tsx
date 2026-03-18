@@ -28,6 +28,20 @@ const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
+  const [dbUnits, setDbUnits] = useState<{ id: string; name: string; abbreviation: string }[]>([]);
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      const [catRes, unitRes] = await Promise.all([
+        supabase.from("insumo_categories").select("id, name").order("sort_order"),
+        supabase.from("insumo_units").select("id, name, abbreviation").order("sort_order"),
+      ]);
+      if (catRes.data) setDbCategories(catRes.data);
+      if (unitRes.data) setDbUnits(unitRes.data);
+    };
+    fetchLists();
+  }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
