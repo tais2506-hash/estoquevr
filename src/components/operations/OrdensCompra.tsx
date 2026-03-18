@@ -3,7 +3,18 @@ import { useInventory } from "@/contexts/InventoryContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Trash2, ShoppingCart, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ShoppingCart, ChevronDown, ChevronUp, Package, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,6 +136,17 @@ const OrdensCompra = ({ onBack }: { onBack: () => void }) => {
       toast.success("OC reaberta");
       refetch();
     } catch { toast.error("Erro ao reabrir OC"); }
+  };
+
+  const handleDeleteOc = async (ocId: string) => {
+    try {
+      await supabase.from("oc_items").delete().eq("oc_id", ocId);
+      await supabase.from("ordens_compra").delete().eq("id", ocId);
+      toast.success("OC excluída");
+      setExpandedOcId(null);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["oc_items"] });
+    } catch { toast.error("Erro ao excluir OC"); }
   };
 
   const getInsumoName = (id: string) => insumos.find(i => i.id === id)?.name || "—";
@@ -304,6 +326,30 @@ const OrdensCompra = ({ onBack }: { onBack: () => void }) => {
                       })}
                     </tbody>
                   </table>
+
+                  <div className="mt-4 flex justify-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="w-4 h-4 mr-1" /> Excluir OC
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Ordem de Compra</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir a OC <strong>{oc.numero_oc}</strong>? Todos os itens serão removidos. Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteOc(oc.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               )}
             </div>
