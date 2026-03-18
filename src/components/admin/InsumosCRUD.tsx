@@ -359,6 +359,45 @@ const InsumosCRUD = () => {
           </tbody>
         </table>
       </div>
+
+      {showInactive && inactiveInsumos.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Insumos Desativados ({inactiveInsumos.length})</h3>
+          <div className="bg-card rounded-xl border border-border overflow-hidden opacity-75">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Código</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Categoria</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveInsumos.map(i => (
+                  <tr key={i.id} className="border-b border-border/50 last:border-0">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-muted-foreground line-through">{i.name}</span>
+                        <Badge variant="secondary" className="text-xs">Desativado</Badge>
+                      </div>
+                    </td>
+                    <td className="p-3 text-muted-foreground hidden sm:table-cell font-mono text-xs">{i.code}</td>
+                    <td className="p-3 text-muted-foreground">{i.unit}</td>
+                    <td className="p-3 text-muted-foreground hidden md:table-cell">{i.category || "—"}</td>
+                    <td className="p-3 text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleReactivate(i.id)}>
+                        <RotateCcw className="w-4 h-4 mr-1" />Reativar
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
