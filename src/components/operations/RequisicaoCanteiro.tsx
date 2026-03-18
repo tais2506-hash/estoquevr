@@ -44,6 +44,8 @@ interface ReqGroup {
 interface ItemLinha {
   insumoId: string;
   quantity: string;
+  locationId: string;
+  localAplicacao: string;
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
@@ -55,7 +57,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
   const [formData, setFormData] = useState({
     kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
@@ -135,7 +137,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return parts.join(" > ");
   };
   // --- Multi-item helpers ---
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
@@ -154,23 +156,25 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       }
       setIsSubmitting(true);
       try {
-        const localAplicacao = formData.locationId
-          ? getLocationPath(formData.locationId)
-          : formData.localAplicacao || "Não especificado";
         const now = new Date().toISOString();
 
-        const rows = validItems.map(it => ({
-          obra_id: selectedObraId,
-          insumo_id: it.insumoId,
-          quantity: parseFloat(it.quantity),
-          local_aplicacao: localAplicacao,
-          location_id: formData.locationId || null,
-          responsavel: formData.responsavel,
-          solicitante_nome: formData.solicitanteNome || user.name,
-          date: formData.date,
-          user_id: user.id,
-          created_at: now,
-        }));
+        const rows = validItems.map(it => {
+          const localAplicacao = it.locationId
+            ? getLocationPath(it.locationId)
+            : it.localAplicacao || "Não especificado";
+          return {
+            obra_id: selectedObraId,
+            insumo_id: it.insumoId,
+            quantity: parseFloat(it.quantity),
+            local_aplicacao: localAplicacao,
+            location_id: it.locationId || null,
+            responsavel: formData.responsavel,
+            solicitante_nome: formData.solicitanteNome || user.name,
+            date: formData.date,
+            user_id: user.id,
+            created_at: now,
+          };
+        });
         const { error } = await supabase.from("requisicoes").insert(rows);
         if (error) throw error;
         toast.success(`Requisição enviada com ${validItems.length} ${validItems.length === 1 ? "item" : "itens"}!`);
@@ -224,7 +228,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setItems([{ insumoId: "", quantity: "" }]);
+    setItems([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
     setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
   };
 
@@ -331,38 +335,56 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Itens da requisição</Label>
               {items.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-end">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
-                    <SearchableSelect
-                      options={estoqueObra
-                        .filter(e => e.insumo && (!usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId))
-                        .map(e => ({
-                          value: e.insumo_id,
-                          label: `${e.insumo?.name || "—"} — Disp: ${e.quantity} ${e.insumo?.unit || ""}`,
-                          searchTerms: e.insumo?.code || "",
-                        }))}
-                      value={item.insumoId}
-                      onValueChange={v => updateItemLine(idx, "insumoId", v)}
-                      placeholder="Selecione o insumo"
-                      searchPlaceholder="Buscar..."
-                      emptyMessage="Nenhum insumo."
-                    />
+                <div key={idx} className="border border-border rounded-lg p-3 space-y-2">
+                  <div className="flex gap-2 items-end">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Insumo</Label>
+                      <SearchableSelect
+                        options={estoqueObra
+                          .filter(e => e.insumo && (!usedInsumoIds.includes(e.insumo_id) || e.insumo_id === item.insumoId))
+                          .map(e => ({
+                            value: e.insumo_id,
+                            label: `${e.insumo?.name || "—"} — Disp: ${e.quantity} ${e.insumo?.unit || ""}`,
+                            searchTerms: e.insumo?.code || "",
+                          }))}
+                        value={item.insumoId}
+                        onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                        placeholder="Selecione o insumo"
+                        searchPlaceholder="Buscar..."
+                        emptyMessage="Nenhum insumo."
+                      />
+                    </div>
+                    <div className="w-20 shrink-0 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Qtd</Label>
+                      <Input
+                        type="number" min="0" step="any"
+                        value={item.quantity}
+                        onChange={e => updateItemLine(idx, "quantity", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    {items.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeItemLine(idx)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
-                  <div className="w-20 shrink-0 space-y-1">
-                    {idx === 0 && <Label className="text-xs text-muted-foreground">Qtd</Label>}
-                    <Input
-                      type="number" min="0" step="any"
-                      value={item.quantity}
-                      onChange={e => updateItemLine(idx, "quantity", e.target.value)}
-                      placeholder="0"
-                    />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Local de Aplicação</Label>
+                    {obraLocations.length > 0 ? (
+                      <CascadingLocationSelect
+                        locations={obraLocations}
+                        value={item.locationId}
+                        onValueChange={v => updateItemLine(idx, "locationId", v)}
+                      />
+                    ) : (
+                      <Input
+                        value={item.localAplicacao}
+                        onChange={e => updateItemLine(idx, "localAplicacao", e.target.value)}
+                        placeholder="Ex: Bloco A - 3º andar"
+                      />
+                    )}
                   </div>
-                  {items.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeItemLine(idx)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
                 </div>
               ))}
               <Button type="button" variant="outline" size="sm" className="w-full" onClick={addItemLine}>
@@ -441,20 +463,22 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
             <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Quem vai retirar o material" />
           </div>
 
-          {obraLocations.length > 0 ? (
-            <div className="space-y-2">
-              <Label>Local de Aplicação</Label>
-              <CascadingLocationSelect
-                locations={obraLocations}
-                value={formData.locationId}
-                onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Local de Aplicação</Label>
-              <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
-            </div>
+          {mode === "kit" && (
+            obraLocations.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Local de Aplicação</Label>
+                <CascadingLocationSelect
+                  locations={obraLocations}
+                  value={formData.locationId}
+                  onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Local de Aplicação</Label>
+                <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
+              </div>
+            )
           )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
