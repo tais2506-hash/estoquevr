@@ -184,7 +184,35 @@ const ObraDashboard = () => {
     }
   };
 
-  const renderOperation = () => {
+  const openEditEstoque = (item: any) => {
+    setEditingEstoque(item);
+    setEditLote(item.lote || "");
+    setEditValidade(item.validade || "");
+  };
+
+  const handleSaveEstoqueEdit = async () => {
+    if (!editingEstoque) return;
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("estoque")
+        .update({
+          lote: editLote || null,
+          validade: editValidade || null,
+        })
+        .eq("id", editingEstoque.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["estoque"] });
+      toast.success("Lote e validade atualizados");
+      setEditingEstoque(null);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+
     switch (view) {
       case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
       case "baixar": return <BaixarEstoque onBack={() => setView("menu")} />;
