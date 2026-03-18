@@ -20,8 +20,9 @@ import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
 import InventarioConferencia from "@/components/operations/InventarioConferencia";
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
+import KitsCRUD from "@/components/admin/KitsCRUD";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
@@ -30,6 +31,7 @@ const operations = [
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
   { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
+  { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -180,6 +182,7 @@ const ObraDashboard = () => {
       case "emprestimo": return <EmprestimoEstoque onBack={() => setView("menu")} />;
       case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
+      case "kits": return <KitsCRUD obraId={selectedObraId!} onBack={() => setView("menu")} />;
       default: return null;
     }
   };
@@ -259,7 +262,7 @@ const ObraDashboard = () => {
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-5">Operações</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {operations.filter(op => hasPermission(op.permission)).map((op, idx) => (
+                {operations.filter(op => !op.permission || hasPermission(op.permission)).map((op, idx) => (
                   <button key={op.key} onClick={() => setView(op.key)} className="operation-btn animate-fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
                     <op.icon className={`w-10 h-10 ${op.color}`} strokeWidth={1.5} />
                     <span className="font-semibold text-foreground text-sm">{op.label}</span>

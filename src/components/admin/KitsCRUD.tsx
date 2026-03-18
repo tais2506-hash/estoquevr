@@ -11,26 +11,29 @@ import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-const KitsCRUD = () => {
+interface KitsCRUDProps {
+  obraId?: string;
+  onBack?: () => void;
+}
+
+const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
   const { kits, kitItems, insumos, obras } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [selectedObraFilter, setSelectedObraFilter] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", description: "", obra_id: "" });
+  const [form, setForm] = useState({ name: "", description: "", obra_id: obraId || "" });
   const [items, setItems] = useState<{ insumo_id: string; quantity: number }[]>([]);
 
   const activeObras = useMemo(() => obras.filter(o => o.status === "ativa"), [obras]);
 
   const filtered = useMemo(() => {
-    let result = kits;
-    if (selectedObraFilter && selectedObraFilter !== "all") result = result.filter(k => k.obra_id === selectedObraFilter);
+    let result = obraId ? kits.filter(k => k.obra_id === obraId) : kits;
     if (search) result = result.filter(k => k.name.toLowerCase().includes(search.toLowerCase()));
     return result;
-  }, [kits, search, selectedObraFilter]);
+  }, [kits, search, obraId]);
 
-  const resetForm = () => { setForm({ name: "", description: "", obra_id: "" }); setEditing(null); setItems([]); };
+  const resetForm = () => { setForm({ name: "", description: "", obra_id: obraId || "" }); setEditing(null); setItems([]); };
 
   const openEdit = (kit: any) => {
     setEditing(kit);
@@ -90,20 +93,16 @@ const KitsCRUD = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex gap-3 flex-1 min-w-0">
+        <div className="flex gap-3 flex-1 min-w-0 items-center">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <X className="w-4 h-4" />
+            </Button>
+          )}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar kits..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
-          <Select value={selectedObraFilter} onValueChange={setSelectedObraFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Todas as obras" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as obras</SelectItem>
-              {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
@@ -114,15 +113,17 @@ const KitsCRUD = () => {
               <DialogTitle>{editing ? "Editar Kit" : "Novo Kit"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Obra <span className="text-destructive">*</span></Label>
-                <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
-                  <SelectContent>
-                    {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!obraId && (
+                <div className="space-y-2">
+                  <Label>Obra <span className="text-destructive">*</span></Label>
+                  <Select value={form.obra_id} onValueChange={v => setForm({ ...form, obra_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a obra" /></SelectTrigger>
+                    <SelectContent>
+                      {activeObras.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Nome <span className="text-destructive">*</span></Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Nome do kit" />

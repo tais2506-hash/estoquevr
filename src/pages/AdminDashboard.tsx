@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
-import KitsCRUD from "@/components/admin/KitsCRUD";
+
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import UserManagement from "@/components/admin/UserManagement";
 import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
@@ -105,7 +105,6 @@ const AdminDashboard = () => {
               {(isAdmin || hasPermission("relatorios.visualizar")) && <TabsTrigger value="relatorios">Relatórios</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.obras")) && <TabsTrigger value="obras">Obras</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.insumos")) && <TabsTrigger value="insumos">Insumos</TabsTrigger>}
-              {(isAdmin || hasPermission("cadastro.kits")) && <TabsTrigger value="kits">Cadastro Kits</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.locais")) && <TabsTrigger value="locais">Locais</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.servicos")) && <TabsTrigger value="servicos">Serviços</TabsTrigger>}
               {(isAdmin || hasPermission("admin.usuarios")) && <TabsTrigger value="usuarios">Usuários</TabsTrigger>}
@@ -121,7 +120,6 @@ const AdminDashboard = () => {
           {(isAdmin || hasPermission("relatorios.visualizar")) && <TabsContent value="relatorios"><ReportsPage /></TabsContent>}
           {(isAdmin || hasPermission("cadastro.obras")) && <TabsContent value="obras"><ObrasCRUD /></TabsContent>}
           {(isAdmin || hasPermission("cadastro.insumos")) && <TabsContent value="insumos"><InsumosCRUD /></TabsContent>}
-          {(isAdmin || hasPermission("cadastro.kits")) && <TabsContent value="kits"><KitsCRUD /></TabsContent>}
           {(isAdmin || hasPermission("cadastro.locais")) && <TabsContent value="locais"><LocationsCRUD /></TabsContent>}
           {(isAdmin || hasPermission("cadastro.servicos")) && <TabsContent value="servicos"><ServicePackagesCRUD /></TabsContent>}
           {(isAdmin || hasPermission("admin.usuarios")) && <TabsContent value="usuarios"><UserManagement /></TabsContent>}
