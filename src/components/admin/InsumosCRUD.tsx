@@ -28,6 +28,8 @@ const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [inactiveInsumos, setInactiveInsumos] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
   const [dbUnits, setDbUnits] = useState<{ id: string; name: string; abbreviation: string }[]>([]);
 
