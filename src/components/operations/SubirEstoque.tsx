@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus } from "lucide-react";
+import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,17 +12,28 @@ import ImportarPlanilha from "@/components/operations/ImportarPlanilha";
 
 type Step = "choose" | "manual" | "importar" | "done";
 
+interface ItemLinha {
+  insumoId: string;
+  quantity: string;
+  unitValue: string;
+  lote: string;
+  validade: string;
+  ocItemId: string;
+}
+
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, selectedObraId, addEntrada } = useInventory();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("choose");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0],
-    validade: "", lote: "", ocItemId: "",
-  });
 
-  const totalValue = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitValue) || 0);
+  // Multi-item state
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+
+  // Shared fields
+  const [sharedData, setSharedData] = useState({
+    notaFiscal: "", date: new Date().toISOString().split("T")[0],
+  });
 
   // Fetch open OCs for this obra
   const { data: ordensCompra = [] } = useQuery({
@@ -49,21 +60,6 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     enabled: ordensCompra.length > 0,
   });
 
-  // OC item options filtered by selected insumo
-  const ocItemOptions = useMemo(() => {
-    if (!formData.insumoId) return [];
-    return ocItems
-      .filter(it => it.insumo_id === formData.insumoId && Number(it.quantity) > Number(it.quantity_delivered))
-      .map(it => {
-        const oc = ordensCompra.find(o => o.id === it.oc_id);
-        const saldo = Number(it.quantity) - Number(it.quantity_delivered);
-        return {
-          value: it.id,
-          label: `${oc?.numero_oc || "OC"} — Saldo: ${saldo.toLocaleString("pt-BR")}`,
-        };
-      });
-  }, [formData.insumoId, ocItems, ordensCompra]);
-
   const insumoOptions = useMemo(() =>
     insumos.map(i => ({
       value: i.id,
@@ -73,42 +69,87 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     [insumos]
   );
 
+  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+
+  const getInsumoOptionsFiltered = (currentInsumoId: string) =>
+    insumoOptions.filter(o => !usedInsumoIds.includes(o.value) || o.value === currentInsumoId);
+
+  const getOcItemOptions = (insumoId: string) => {
+    if (!insumoId) return [];
+    return ocItems
+      .filter(it => it.insumo_id === insumoId && Number(it.quantity) > Number(it.quantity_delivered))
+      .map(it => {
+        const oc = ordensCompra.find(o => o.id === it.oc_id);
+        const saldo = Number(it.quantity) - Number(it.quantity_delivered);
+        return {
+          value: it.id,
+          label: `${oc?.numero_oc || "OC"} — Saldo: ${saldo.toLocaleString("pt-BR")}`,
+        };
+      });
+  };
+
+  // Multi-item helpers
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+  const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+
+  const totalGeral = items.reduce((acc, it) => {
+    return acc + (parseFloat(it.quantity) || 0) * (parseFloat(it.unitValue) || 0);
+  }, 0);
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedObraId || isSubmitting) return;
-    if (!formData.insumoId || !formData.notaFiscal || !formData.quantity || !formData.unitValue) {
-      toast.error("Preencha todos os campos");
+
+    const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
+    if (validItems.length === 0 || !sharedData.notaFiscal) {
+      toast.error("Preencha a nota fiscal e adicione pelo menos um insumo com quantidade e valor");
       return;
     }
+
     setIsSubmitting(true);
     try {
-      await addEntrada({
-        obraId: selectedObraId, insumoId: formData.insumoId, notaFiscal: formData.notaFiscal,
-        quantity: parseFloat(formData.quantity), unitValue: parseFloat(formData.unitValue),
-        totalValue, date: formData.date,
-        validade: formData.validade || undefined,
-        lote: formData.lote || undefined,
-        ocItemId: formData.ocItemId || undefined,
-      });
+      for (const item of validItems) {
+        const qty = parseFloat(item.quantity);
+        const unitVal = parseFloat(item.unitValue);
+        const totalValue = qty * unitVal;
 
-      // Update OC item delivered quantity
-      if (formData.ocItemId) {
-        const ocItem = ocItems.find(i => i.id === formData.ocItemId);
-        if (ocItem) {
-          const newDelivered = Number(ocItem.quantity_delivered) + parseFloat(formData.quantity);
-          await supabase.from("oc_items").update({ quantity_delivered: newDelivered }).eq("id", formData.ocItemId);
-          queryClient.invalidateQueries({ queryKey: ["oc_items"] });
-          queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
+        await addEntrada({
+          obraId: selectedObraId, insumoId: item.insumoId, notaFiscal: sharedData.notaFiscal,
+          quantity: qty, unitValue: unitVal, totalValue, date: sharedData.date,
+          validade: item.validade || undefined,
+          lote: item.lote || undefined,
+          ocItemId: item.ocItemId || undefined,
+        });
+
+        // Update OC item delivered quantity
+        if (item.ocItemId) {
+          const ocItem = ocItems.find(i => i.id === item.ocItemId);
+          if (ocItem) {
+            const newDelivered = Number(ocItem.quantity_delivered) + qty;
+            await supabase.from("oc_items").update({ quantity_delivered: newDelivered }).eq("id", item.ocItemId);
+          }
         }
       }
 
-      toast.success("Entrada registrada com sucesso!");
+      if (validItems.some(it => it.ocItemId)) {
+        queryClient.invalidateQueries({ queryKey: ["oc_items"] });
+        queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
+      }
+
+      toast.success(`${validItems.length} ${validItems.length === 1 ? "entrada registrada" : "entradas registradas"}!`);
       setStep("done");
     } catch {
       toast.error("Erro ao registrar entrada");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setItems([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+    setSharedData({ notaFiscal: "", date: new Date().toISOString().split("T")[0] });
   };
 
   if (step === "done") {
@@ -120,7 +161,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <h2 className="text-xl font-bold text-foreground mb-2">Entrada Registrada!</h2>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={onBack}>Voltar ao Menu</Button>
-          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0], validade: "", lote: "", ocItemId: "" }); }}>
+          <Button onClick={() => { setStep("choose"); resetForm(); }}>
             Nova Entrada
           </Button>
         </div>
@@ -143,7 +184,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           <button onClick={() => setStep("manual")} className="operation-btn">
             <Plus className="w-10 h-10 text-success" strokeWidth={1.5} />
             <span className="font-semibold text-foreground">Entrada Manual</span>
-            <span className="text-xs text-muted-foreground">Cadastrar item a item</span>
+            <span className="text-xs text-muted-foreground">Cadastrar múltiplos itens</span>
           </button>
           <button onClick={() => setStep("importar")} className="operation-btn">
             <FileSpreadsheet className="w-10 h-10 text-info" strokeWidth={1.5} />
@@ -162,74 +203,106 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
       </button>
       <h2 className="text-xl font-bold text-foreground mb-6">Entrada Manual</h2>
 
-      <form onSubmit={handleManualSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
-        <div className="space-y-2">
-          <Label>Insumo</Label>
-          <SearchableSelect
-            options={insumoOptions}
-            value={formData.insumoId}
-            onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
-            placeholder="Selecione o insumo"
-            searchPlaceholder="Buscar por nome ou código..."
-            emptyMessage="Nenhum insumo encontrado."
-          />
-        </div>
-
-        {/* OC link (optional) */}
-        {ocItemOptions.length > 0 && (
-          <div className="space-y-2">
-            <Label>Vincular à OC <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-            <SearchableSelect
-              options={ocItemOptions}
-              value={formData.ocItemId}
-              onValueChange={v => setFormData(p => ({ ...p, ocItemId: v }))}
-              placeholder="Selecione a OC (opcional)"
-              searchPlaceholder="Buscar OC..."
-              emptyMessage="Nenhuma OC com saldo."
-            />
-          </div>
-        )}
-
+      <form onSubmit={handleManualSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-xl">
+        {/* Shared fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Nota Fiscal</Label>
-            <Input value={formData.notaFiscal} onChange={e => setFormData(p => ({ ...p, notaFiscal: e.target.value }))} placeholder="NF-0000" />
+            <Label>Nota Fiscal <span className="text-destructive">*</span></Label>
+            <Input value={sharedData.notaFiscal} onChange={e => setSharedData(p => ({ ...p, notaFiscal: e.target.value }))} placeholder="NF-0000" />
           </div>
           <div className="space-y-2">
             <Label>Data</Label>
-            <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
+            <Input type="date" value={sharedData.date} onChange={e => setSharedData(p => ({ ...p, date: e.target.value }))} />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Quantidade</Label>
-            <Input type="number" min="0" step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Valor Unitário (R$)</Label>
-            <Input type="number" min="0" step="0.01" value={formData.unitValue} onChange={e => setFormData(p => ({ ...p, unitValue: e.target.value }))} />
-          </div>
+        {/* Items */}
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold">Itens da entrada</Label>
+          {items.map((item, idx) => {
+            const totalItem = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitValue) || 0);
+            const ocOpts = getOcItemOptions(item.insumoId);
+
+            return (
+              <div key={idx} className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-muted-foreground">Insumo</Label>
+                    <SearchableSelect
+                      options={getInsumoOptionsFiltered(item.insumoId)}
+                      value={item.insumoId}
+                      onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                      placeholder="Selecione o insumo"
+                      searchPlaceholder="Buscar por nome ou código..."
+                      emptyMessage="Nenhum insumo encontrado."
+                    />
+                  </div>
+                  {items.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeItemLine(idx)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Quantidade</Label>
+                    <Input type="number" min="0" step="any" value={item.quantity} onChange={e => updateItemLine(idx, "quantity", e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor Unit. (R$)</Label>
+                    <Input type="number" min="0" step="0.01" value={item.unitValue} onChange={e => updateItemLine(idx, "unitValue", e.target.value)} placeholder="0,00" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Total</Label>
+                    <div className="h-10 flex items-center px-3 rounded-md border border-border bg-muted/50 text-sm font-medium text-foreground">
+                      {totalItem.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Lote <span className="text-xs">(opc.)</span></Label>
+                    <Input value={item.lote} onChange={e => updateItemLine(idx, "lote", e.target.value)} placeholder="Ex: LT-2026-001" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Validade <span className="text-xs">(opc.)</span></Label>
+                    <Input type="date" value={item.validade} onChange={e => updateItemLine(idx, "validade", e.target.value)} />
+                  </div>
+                </div>
+
+                {ocOpts.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Vincular à OC <span className="text-xs">(opc.)</span></Label>
+                    <SearchableSelect
+                      options={ocOpts}
+                      value={item.ocItemId}
+                      onValueChange={v => updateItemLine(idx, "ocItemId", v)}
+                      placeholder="Selecione a OC (opcional)"
+                      searchPlaceholder="Buscar OC..."
+                      emptyMessage="Nenhuma OC com saldo."
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={addItemLine}>
+            <Plus className="w-4 h-4 mr-1" /> Adicionar Item
+          </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-            <Input value={formData.lote} onChange={e => setFormData(p => ({ ...p, lote: e.target.value }))} placeholder="Ex: LT-2026-001" />
+        {/* Total geral */}
+        <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">Valor Total ({items.filter(it => it.insumoId).length} {items.filter(it => it.insumoId).length === 1 ? "item" : "itens"})</p>
+            <p className="text-lg font-bold text-foreground">{totalGeral.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
           </div>
-          <div className="space-y-2">
-            <Label>Validade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-            <Input type="date" value={formData.validade} onChange={e => setFormData(p => ({ ...p, validade: e.target.value }))} />
-          </div>
-        </div>
-
-        <div className="bg-muted/50 rounded-lg p-3">
-          <p className="text-xs text-muted-foreground">Valor Total</p>
-          <p className="text-lg font-bold text-foreground">{totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Registrando..." : "Registrar Entrada"}
+          {isSubmitting ? "Registrando..." : `Registrar ${items.filter(it => it.insumoId && parseFloat(it.quantity) > 0).length > 1 ? items.filter(it => it.insumoId && parseFloat(it.quantity) > 0).length + " Entradas" : "Entrada"}`}
         </Button>
       </form>
     </div>

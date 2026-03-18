@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
-import { ArrowLeft, ArrowDown, Package, History } from "lucide-react";
+import { ArrowLeft, ArrowDown, Package, History, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,12 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CascadingLocationSelect } from "@/components/ui/cascading-location-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+
+interface ItemLinha {
+  insumoId: string;
+  quantity: string;
+  lote: string;
+}
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages, entradas } = useInventory();
@@ -18,23 +24,17 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [semLocal, setSemLocal] = useState(false);
   const [semData, setSemData] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
+
+  // Multi-item state
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "" }]);
+
+  // Shared fields
   const [formData, setFormData] = useState({
-    insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "", lote: "",
+    kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
+    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
-  const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
-  const maxQty = selectedItem?.quantity || 0;
-
-  // Available lots for selected insumo
-  const availableLots = useMemo(() => {
-    if (!selectedObraId || !formData.insumoId) return [];
-    const lots = entradas
-      .filter((e: any) => e.obra_id === selectedObraId && e.insumo_id === formData.insumoId && e.lote)
-      .map((e: any) => e.lote as string);
-    return Array.from(new Set(lots)).sort();
-  }, [entradas, selectedObraId, formData.insumoId]);
 
   const obraLocations = useMemo(() =>
     locations.filter(l => l.obra_id === selectedObraId),
@@ -44,9 +44,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     servicePackages.filter(s => s.status === "ativo"),
     [servicePackages]
   );
-
-  const selectedInsumo = insumos.find(i => i.id === formData.insumoId);
-  const requiresLocation = selectedInsumo?.controla_rastreabilidade;
 
   const getLocationPath = (locId: string): string => {
     const parts: string[] = [];
@@ -63,20 +60,28 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     return Array.from(cats).sort();
   }, [estoqueObra]);
 
-  const insumoOptions = useMemo(() =>
+  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+
+  const getInsumoOptions = (currentInsumoId: string) =>
     estoqueObra
       .filter(e => !categoryFilter || e.insumo.category === categoryFilter)
+      .filter(e => !usedInsumoIds.includes(e.insumo_id) || e.insumo_id === currentInsumoId)
       .map(e => {
         const ins = insumos.find(i => i.id === e.insumo_id);
         return {
           value: e.insumo_id,
           label: `[${ins?.code}] ${e.insumo.name} — ${e.quantity} ${e.insumo.unit}`,
           searchTerms: `${ins?.code || ""} ${ins?.category || ""} ${e.insumo.name}`,
-          subtitle: ins?.category || "",
         };
-      }),
-    [estoqueObra, insumos, categoryFilter]
-  );
+      });
+
+  const getAvailableLots = (insumoId: string) => {
+    if (!selectedObraId || !insumoId) return [];
+    const lots = entradas
+      .filter((e: any) => e.obra_id === selectedObraId && e.insumo_id === insumoId && e.lote)
+      .map((e: any) => e.lote as string);
+    return Array.from(new Set(lots)).sort();
+  };
 
   const kitOptions = useMemo(() =>
     kits.map(k => {
@@ -91,13 +96,38 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     [obraServices]
   );
 
+  // Multi-item helpers
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", lote: "" }]);
+  const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+
   const handleSubmitInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedObraId || isSubmitting) return;
-    const qty = parseFloat(formData.quantity);
-    if (qty > maxQty) { toast.error(`Estoque insuficiente. Disponível: ${maxQty}`); return; }
-    if (!formData.insumoId || !qty || !formData.responsavel) { toast.error("Preencha todos os campos obrigatórios"); return; }
-    if (requiresLocation && !formData.locationId && !(retroativo && semLocal)) { toast.error("Local é obrigatório para este insumo (rastreabilidade)"); return; }
+
+    const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0);
+    if (validItems.length === 0 || !formData.responsavel) {
+      toast.error("Adicione pelo menos um insumo com quantidade e preencha o responsável");
+      return;
+    }
+
+    // Validate stock for each item
+    for (const item of validItems) {
+      const estoqueItem = estoqueObra.find(e => e.insumo_id === item.insumoId);
+      const maxQty = estoqueItem?.quantity || 0;
+      const qty = parseFloat(item.quantity);
+      if (qty > maxQty) {
+        const ins = insumos.find(i => i.id === item.insumoId);
+        toast.error(`Estoque insuficiente para ${ins?.name}. Disponível: ${maxQty}`);
+        return;
+      }
+      const selectedInsumo = insumos.find(i => i.id === item.insumoId);
+      if (selectedInsumo?.controla_rastreabilidade && !formData.locationId && !(retroativo && semLocal)) {
+        toast.error(`Local é obrigatório para ${selectedInsumo.name} (rastreabilidade)`);
+        return;
+      }
+    }
 
     const retroLabel = retroativo ? " [RETROATIVO]" : "";
     const localAplicacao = (retroativo && semLocal)
@@ -110,14 +140,16 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
     setIsSubmitting(true);
     try {
-      await addSaida({
-        obraId: selectedObraId, insumoId: formData.insumoId, quantity: qty,
-        date: dateToUse, localAplicacao, responsavel: formData.responsavel,
-        locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
-        servicePackageId: formData.servicePackageId || undefined,
-        lote: formData.lote || undefined,
-      });
-      toast.success("Saída registrada!");
+      for (const item of validItems) {
+        await addSaida({
+          obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
+          date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+          locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
+          servicePackageId: formData.servicePackageId || undefined,
+          lote: item.lote || undefined,
+        });
+      }
+      toast.success(`${validItems.length} ${validItems.length === 1 ? "saída registrada" : "saídas registradas"}!`);
       setDone(true);
     } catch {
       toast.error("Erro ao registrar saída");
@@ -176,7 +208,8 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const resetAll = () => {
     setDone(false);
     setRetroativo(false); setSemLocal(false); setSemData(false); setCategoryFilter("");
-    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "", lote: "" });
+    setItems([{ insumoId: "", quantity: "", lote: "" }]);
+    setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
   if (done) {
@@ -194,6 +227,12 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
+  // Check if any selected insumo requires location
+  const anyRequiresLocation = items.some(it => {
+    const ins = insumos.find(i => i.id === it.insumoId);
+    return ins?.controla_rastreabilidade;
+  });
+
   return (
     <div className="animate-fade-in">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -203,7 +242,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
       <div className="flex gap-2 mb-6">
         <Button variant={mode === "insumo" ? "default" : "outline"} size="sm" onClick={() => setMode("insumo")}>
-          Insumo Individual
+          Insumos
         </Button>
         {kits.length > 0 && (
           <Button variant={mode === "kit" ? "default" : "outline"} size="sm" onClick={() => setMode("kit")}>
@@ -242,7 +281,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         </div>
       )}
 
-      <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-lg">
+      <form onSubmit={mode === "insumo" ? handleSubmitInsumo : handleSubmitKit} className="bg-card rounded-xl border border-border p-6 space-y-5 max-w-xl">
         {mode === "insumo" ? (
           <>
             {categories.length > 1 && (
@@ -253,50 +292,97 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                     onClick={() => setCategoryFilter("")}>Todas</Button>
                   {categories.map(cat => (
                     <Button key={cat} type="button" variant={categoryFilter === cat ? "default" : "outline"} size="sm" className="h-7 text-xs"
-                      onClick={() => { setCategoryFilter(cat); setFormData(p => ({ ...p, insumoId: "" })); }}>{cat}</Button>
+                      onClick={() => setCategoryFilter(cat)}>{cat}</Button>
                   ))}
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label>Insumo</Label>
-              <SearchableSelect
-                options={insumoOptions}
-                value={formData.insumoId}
-                onValueChange={v => setFormData(p => ({ ...p, insumoId: v }))}
-                placeholder="Buscar por nome, código ou categoria..."
-                searchPlaceholder="Ex: arg massa, 01.001, hidráulica..."
-                emptyMessage="Nenhum insumo encontrado."
-              />
+
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Itens da saída</Label>
+              {items.map((item, idx) => {
+                const estoqueItem = estoqueObra.find(e => e.insumo_id === item.insumoId);
+                const maxQty = estoqueItem?.quantity || 0;
+                const lots = getAvailableLots(item.insumoId);
+
+                return (
+                  <div key={idx} className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 space-y-1">
+                        {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
+                        <SearchableSelect
+                          options={getInsumoOptions(item.insumoId)}
+                          value={item.insumoId}
+                          onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                          placeholder="Buscar por nome, código ou categoria..."
+                          searchPlaceholder="Ex: arg massa, 01.001..."
+                          emptyMessage="Nenhum insumo encontrado."
+                        />
+                      </div>
+                      <div className="w-24 space-y-1">
+                        {idx === 0 && <Label className="text-xs text-muted-foreground">Qtd</Label>}
+                        <Input
+                          type="number" min="0" max={maxQty || undefined} step="any"
+                          value={item.quantity}
+                          onChange={e => updateItemLine(idx, "quantity", e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      {items.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeItemLine(idx)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {item.insumoId && (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>Disponível: <span className="font-bold text-foreground">{maxQty} {estoqueItem?.insumo?.unit || ""}</span></span>
+                        {lots.length > 0 && (
+                          <div className="flex-1 max-w-[200px]">
+                            <SearchableSelect
+                              options={[
+                                { value: "__none__", label: "Sem lote" },
+                                ...lots.map(l => ({ value: l, label: l })),
+                              ]}
+                              value={item.lote || "__none__"}
+                              onValueChange={v => updateItemLine(idx, "lote", v === "__none__" ? "" : v)}
+                              placeholder="Lote"
+                              searchPlaceholder="Buscar lote..."
+                              emptyMessage="Nenhum lote."
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={addItemLine}>
+                <Plus className="w-4 h-4 mr-1" /> Adicionar Item
+              </Button>
             </div>
-            {selectedItem && (
-              <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                <span className="text-muted-foreground">Disponível: </span>
-                <span className="font-bold text-foreground">{maxQty} {selectedItem.insumo.unit}</span>
-                {selectedInsumo?.category && <span className="ml-2 text-xs text-muted-foreground">({selectedInsumo.category})</span>}
-                {requiresLocation && <span className="ml-2 text-xs text-warning">⚠ Rastreabilidade obrigatória</span>}
-              </div>
-            )}
           </>
         ) : (
-          <div className="space-y-2">
-            <Label>Kit</Label>
-            <SearchableSelect
-              options={kitOptions}
-              value={formData.kitId}
-              onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
-              placeholder="Selecione o kit"
-              searchPlaceholder="Buscar kit..."
-              emptyMessage="Nenhum kit encontrado."
-            />
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label>Kit</Label>
+              <SearchableSelect
+                options={kitOptions}
+                value={formData.kitId}
+                onValueChange={v => setFormData(p => ({ ...p, kitId: v }))}
+                placeholder="Selecione o kit"
+                searchPlaceholder="Buscar kit..."
+                emptyMessage="Nenhum kit encontrado."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Quantidade de kits</Label>
+              <Input type="number" min="1" step="1" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
+            </div>
+          </>
         )}
 
-        <div className={`grid ${retroativo && semData ? "grid-cols-1" : "grid-cols-2"} gap-4`}>
-          <div className="space-y-2">
-            <Label>Quantidade{mode === "kit" ? " de kits" : ""}</Label>
-            <Input type="number" min="0" max={mode === "insumo" ? maxQty : undefined} step="any" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} />
-          </div>
+        <div className={`grid ${retroativo && semData ? "grid-cols-1" : "grid-cols-1"} gap-4`}>
           {!(retroativo && semData) && (
             <div className="space-y-2">
               <Label>Data</Label>
@@ -312,12 +398,12 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         {/* Location - cascading */}
         {!(retroativo && semLocal) && obraLocations.length > 0 && (
           <div className="space-y-2">
-            <Label>Local {requiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
+            <Label>Local {anyRequiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
             <CascadingLocationSelect
               locations={obraLocations}
               value={formData.locationId}
               onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              required={!!requiresLocation}
+              required={!!anyRequiresLocation}
             />
           </div>
         )}
@@ -335,27 +421,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         )}
 
         <div className="space-y-2">
-          <Label>Responsável</Label>
+          <Label>Responsável <span className="text-destructive">*</span></Label>
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
-
-        {/* Lote selection */}
-        {mode === "insumo" && availableLots.length > 0 && (
-          <div className="space-y-2">
-            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-            <SearchableSelect
-              options={[
-                { value: "__none__", label: "Sem lote especificado" },
-                ...availableLots.map(l => ({ value: l, label: l })),
-              ]}
-              value={formData.lote || "__none__"}
-              onValueChange={v => setFormData(p => ({ ...p, lote: v === "__none__" ? "" : v }))}
-              placeholder="Selecione o lote"
-              searchPlaceholder="Buscar lote..."
-              emptyMessage="Nenhum lote encontrado."
-            />
-          </div>
-        )}
 
         {obraServices.length > 0 && (
           <div className="space-y-2">
@@ -372,7 +440,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         )}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Registrando..." : mode === "kit" ? "Baixar Kit" : "Registrar Saída"}
+          {isSubmitting ? "Registrando..." : mode === "kit" ? "Baixar Kit" : `Registrar ${items.filter(it => it.insumoId && parseFloat(it.quantity) > 0).length > 1 ? items.filter(it => it.insumoId && parseFloat(it.quantity) > 0).length + " Saídas" : "Saída"}`}
         </Button>
       </form>
     </div>
