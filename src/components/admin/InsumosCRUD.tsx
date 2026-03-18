@@ -298,6 +298,10 @@ const InsumosCRUD = () => {
           className="w-[180px]"
         />
         {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="w-4 h-4 mr-1" />Limpar filtros</Button>}
+        <div className="flex items-center gap-2 ml-auto">
+          <Label className="text-sm text-muted-foreground">Mostrar desativados</Label>
+          <Switch checked={showInactive} onCheckedChange={setShowInactive} />
+        </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
