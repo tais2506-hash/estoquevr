@@ -20,10 +20,9 @@ const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
   const { kits, kitItems, insumos, obras } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [selectedObraFilter, setSelectedObraFilter] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", description: "", obra_id: "" });
+  const [form, setForm] = useState({ name: "", description: "", obra_id: obraId || "" });
   const [items, setItems] = useState<{ insumo_id: string; quantity: number }[]>([]);
 
   const activeObras = useMemo(() => obras.filter(o => o.status === "ativa"), [obras]);
