@@ -23,6 +23,7 @@ const COLORS = [
 
 const DashboardObra = () => {
   const { obras, estoque, insumos, movimentacoes, entradas, getEstoqueByObra } = useInventory();
+  const today = new Date();
   const [selectedObraId, setSelectedObraId] = useState<string>("");
   const [periodDays, setPeriodDays] = useState<string>("30");
 
