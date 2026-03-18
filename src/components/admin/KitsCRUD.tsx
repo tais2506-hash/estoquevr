@@ -28,11 +28,10 @@ const KitsCRUD = ({ obraId, onBack }: KitsCRUDProps) => {
   const activeObras = useMemo(() => obras.filter(o => o.status === "ativa"), [obras]);
 
   const filtered = useMemo(() => {
-    let result = kits;
-    if (selectedObraFilter && selectedObraFilter !== "all") result = result.filter(k => k.obra_id === selectedObraFilter);
+    let result = obraId ? kits.filter(k => k.obra_id === obraId) : kits;
     if (search) result = result.filter(k => k.name.toLowerCase().includes(search.toLowerCase()));
     return result;
-  }, [kits, search, selectedObraFilter]);
+  }, [kits, search, obraId]);
 
   const resetForm = () => { setForm({ name: "", description: "", obra_id: "" }); setEditing(null); setItems([]); };
 
