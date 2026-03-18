@@ -88,10 +88,23 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         totalValue, date: formData.date,
         validade: formData.validade || undefined,
         lote: formData.lote || undefined,
+        ocItemId: formData.ocItemId || undefined,
       });
+
+      // Update OC item delivered quantity
+      if (formData.ocItemId) {
+        const ocItem = ocItems.find(i => i.id === formData.ocItemId);
+        if (ocItem) {
+          const newDelivered = Number(ocItem.quantity_delivered) + parseFloat(formData.quantity);
+          await supabase.from("oc_items").update({ quantity_delivered: newDelivered }).eq("id", formData.ocItemId);
+          queryClient.invalidateQueries({ queryKey: ["oc_items"] });
+          queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
+        }
+      }
+
       toast.success("Entrada registrada com sucesso!");
       setStep("done");
-    } catch (err) {
+    } catch {
       toast.error("Erro ao registrar entrada");
     } finally {
       setIsSubmitting(false);
