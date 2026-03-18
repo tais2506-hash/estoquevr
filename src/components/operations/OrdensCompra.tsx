@@ -326,6 +326,30 @@ const OrdensCompra = ({ onBack }: { onBack: () => void }) => {
                       })}
                     </tbody>
                   </table>
+
+                  <div className="mt-4 flex justify-end">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="w-4 h-4 mr-1" /> Excluir OC
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Ordem de Compra</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir a OC <strong>{oc.numero_oc}</strong>? Todos os itens serão removidos. Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteOc(oc.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               )}
             </div>
