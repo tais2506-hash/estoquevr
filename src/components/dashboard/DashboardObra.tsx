@@ -300,6 +300,49 @@ const DashboardObra = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Expiry Alerts */}
+      {(expiryAlerts.expired.length > 0 || expiryAlerts.nearExpiry.length > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-warning" />Controle de Validade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {expiryAlerts.expired.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-destructive mb-2">🚫 Materiais Vencidos ({expiryAlerts.expired.length})</h4>
+                <div className="space-y-1">
+                  {expiryAlerts.expired.map((e: any) => (
+                    <div key={e.id} className="flex justify-between items-center p-2 bg-destructive/5 rounded-lg text-sm">
+                      <div>
+                        <span className="text-foreground">{e.insumoName}</span>
+                        {e.lote && <span className="text-xs text-muted-foreground ml-2">Lote: {e.lote}</span>}
+                      </div>
+                      <Badge variant="destructive">Vencido {format(e.validadeDate, "dd/MM/yyyy")}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {expiryAlerts.nearExpiry.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-warning mb-2">⚠️ Próximos do Vencimento ({expiryAlerts.nearExpiry.length})</h4>
+                <div className="space-y-1">
+                  {expiryAlerts.nearExpiry.map((e: any) => (
+                    <div key={e.id} className="flex justify-between items-center p-2 bg-warning/5 rounded-lg text-sm">
+                      <div>
+                        <span className="text-foreground">{e.insumoName}</span>
+                        {e.lote && <span className="text-xs text-muted-foreground ml-2">Lote: {e.lote}</span>}
+                      </div>
+                      <Badge variant="outline" className="border-warning text-warning">Vence {format(e.validadeDate, "dd/MM/yyyy")}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
