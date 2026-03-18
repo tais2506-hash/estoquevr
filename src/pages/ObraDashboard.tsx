@@ -67,6 +67,7 @@ const ObraDashboard = () => {
   const { getSelectedObra, getEstoqueByObra, selectedObraId, insumos, estoque, obras, undoInventarioAjuste, undoEntrada, undoSaida, undoTransferencia, resetEstoqueObra, kits, kitItems } = useInventory();
   const { logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const obra = getSelectedObra();
 
   // Query movimentações filtered by obra_id server-side (avoids 1000 row limit)
