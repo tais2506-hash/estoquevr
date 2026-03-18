@@ -16,6 +16,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0],
+    validade: "", lote: "",
   });
 
   const totalValue = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitValue) || 0);
@@ -42,6 +43,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         obraId: selectedObraId, insumoId: formData.insumoId, notaFiscal: formData.notaFiscal,
         quantity: parseFloat(formData.quantity), unitValue: parseFloat(formData.unitValue),
         totalValue, date: formData.date,
+        validade: formData.validade || undefined,
+        lote: formData.lote || undefined,
       });
       toast.success("Entrada registrada com sucesso!");
       setStep("done");
@@ -61,7 +64,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <h2 className="text-xl font-bold text-foreground mb-2">Entrada Registrada!</h2>
         <div className="flex gap-3 justify-center mt-6">
           <Button variant="outline" onClick={onBack}>Voltar ao Menu</Button>
-          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0] }); }}>
+          <Button onClick={() => { setStep("choose"); setFormData({ insumoId: "", notaFiscal: "", quantity: "", unitValue: "", date: new Date().toISOString().split("T")[0], validade: "", lote: "" }); }}>
             Nova Entrada
           </Button>
         </div>
@@ -135,6 +138,17 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           <div className="space-y-2">
             <Label>Valor Unitário (R$)</Label>
             <Input type="number" min="0" step="0.01" value={formData.unitValue} onChange={e => setFormData(p => ({ ...p, unitValue: e.target.value }))} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <Input value={formData.lote} onChange={e => setFormData(p => ({ ...p, lote: e.target.value }))} placeholder="Ex: LT-2026-001" />
+          </div>
+          <div className="space-y-2">
+            <Label>Validade <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <Input type="date" value={formData.validade} onChange={e => setFormData(p => ({ ...p, validade: e.target.value }))} />
           </div>
         </div>
 

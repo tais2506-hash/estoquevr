@@ -73,8 +73,8 @@ interface InventoryContextType {
   getSelectedObra: () => ObraRow | undefined;
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
-  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string }) => Promise<void>;
-  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => Promise<void>;
+  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string; lote?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
   undoInventarioAjuste: (movimentacaoId: string) => Promise<void>;
@@ -258,7 +258,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userId, user]);
 
-  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string }) => {
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => {
     if (!userId) return;
     const insumo = insumos.find(i => i.id === data.insumoId);
 
@@ -268,7 +268,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       quantity: data.quantity, unit_value: data.unitValue,
       total_value: data.totalValue, date: data.date,
       user_id: userId,
-    }).select().single();
+      validade: data.validade || null,
+      lote: data.lote || null,
+    } as any).select().single();
     if (error) throw error;
 
     if (!insumo?.material_nao_estocavel) {
@@ -279,7 +281,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     refetchAll();
   }, [userId, insumos, updateEstoque, addMovimentacao, addAuditLog, refetchAll]);
 
-  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => {
+  const addSaida = useCallback(async (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string; lote?: string }) => {
     if (!userId) return;
     const estoqueItem = estoque.find(e => e.obra_id === data.obraId && e.insumo_id === data.insumoId);
     const unitCost = estoqueItem ? estoqueItem.average_unit_cost : 0;
@@ -289,6 +291,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       date: data.date, local_aplicacao: data.localAplicacao, responsavel: data.responsavel,
       user_id: userId, location_id: data.locationId || null, kit_id: data.kitId || null,
       service_package_id: data.servicePackageId || null,
+      lote: data.lote || null,
     } as any).select().single();
     if (error) throw error;
 

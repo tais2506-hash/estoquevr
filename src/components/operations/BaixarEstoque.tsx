@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages } = useInventory();
+  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages, entradas } = useInventory();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
@@ -20,12 +20,21 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
+    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "", lote: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
   const selectedItem = estoqueObra.find(e => e.insumo_id === formData.insumoId);
   const maxQty = selectedItem?.quantity || 0;
+
+  // Available lots for selected insumo
+  const availableLots = useMemo(() => {
+    if (!selectedObraId || !formData.insumoId) return [];
+    const lots = entradas
+      .filter((e: any) => e.obra_id === selectedObraId && e.insumo_id === formData.insumoId && e.lote)
+      .map((e: any) => e.lote as string);
+    return Array.from(new Set(lots)).sort();
+  }, [entradas, selectedObraId, formData.insumoId]);
 
   const obraLocations = useMemo(() =>
     locations.filter(l => l.obra_id === selectedObraId),
@@ -106,6 +115,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         date: dateToUse, localAplicacao, responsavel: formData.responsavel,
         locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
         servicePackageId: formData.servicePackageId || undefined,
+        lote: formData.lote || undefined,
       });
       toast.success("Saída registrada!");
       setDone(true);
@@ -166,7 +176,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const resetAll = () => {
     setDone(false);
     setRetroativo(false); setSemLocal(false); setSemData(false); setCategoryFilter("");
-    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
+    setFormData({ insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "", lote: "" });
   };
 
   if (done) {
@@ -328,6 +338,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <Label>Responsável</Label>
           <Input value={formData.responsavel} onChange={e => setFormData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Nome do responsável" />
         </div>
+
+        {/* Lote selection */}
+        {mode === "insumo" && availableLots.length > 0 && (
+          <div className="space-y-2">
+            <Label>Lote <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+            <SearchableSelect
+              options={[
+                { value: "__none__", label: "Sem lote especificado" },
+                ...availableLots.map(l => ({ value: l, label: l })),
+              ]}
+              value={formData.lote || "__none__"}
+              onValueChange={v => setFormData(p => ({ ...p, lote: v === "__none__" ? "" : v }))}
+              placeholder="Selecione o lote"
+              searchPlaceholder="Buscar lote..."
+              emptyMessage="Nenhum lote encontrado."
+            />
+          </div>
+        )}
 
         {obraServices.length > 0 && (
           <div className="space-y-2">

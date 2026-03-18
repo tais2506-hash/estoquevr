@@ -335,12 +335,14 @@ export type Database = {
           fvm_id: string | null
           id: string
           insumo_id: string
+          lote: string | null
           nota_fiscal: string
           obra_id: string
           quantity: number
           total_value: number
           unit_value: number
           user_id: string
+          validade: string | null
         }
         Insert: {
           avaliacao_id?: string | null
@@ -351,12 +353,14 @@ export type Database = {
           fvm_id?: string | null
           id?: string
           insumo_id: string
+          lote?: string | null
           nota_fiscal: string
           obra_id: string
           quantity: number
           total_value: number
           unit_value: number
           user_id: string
+          validade?: string | null
         }
         Update: {
           avaliacao_id?: string | null
@@ -367,12 +371,14 @@ export type Database = {
           fvm_id?: string | null
           id?: string
           insumo_id?: string
+          lote?: string | null
           nota_fiscal?: string
           obra_id?: string
           quantity?: number
           total_value?: number
           unit_value?: number
           user_id?: string
+          validade?: string | null
         }
         Relationships: [
           {
@@ -1114,6 +1120,7 @@ export type Database = {
           kit_id: string | null
           local_aplicacao: string
           location_id: string | null
+          lote: string | null
           obra_id: string
           quantidade_executada: number | null
           quantity: number
@@ -1132,6 +1139,7 @@ export type Database = {
           kit_id?: string | null
           local_aplicacao: string
           location_id?: string | null
+          lote?: string | null
           obra_id: string
           quantidade_executada?: number | null
           quantity: number
@@ -1150,6 +1158,7 @@ export type Database = {
           kit_id?: string | null
           local_aplicacao?: string
           location_id?: string | null
+          lote?: string | null
           obra_id?: string
           quantidade_executada?: number | null
           quantity?: number

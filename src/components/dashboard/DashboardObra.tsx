@@ -9,9 +9,9 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  DollarSign, Package, Activity, AlertTriangle, TrendingDown, ArrowUpDown,
+  DollarSign, Package, Activity, AlertTriangle, TrendingDown, ArrowUpDown, Clock,
 } from "lucide-react";
-import { subDays, parseISO, isAfter } from "date-fns";
+import { subDays, parseISO, isAfter, isBefore, addDays, format } from "date-fns";
 
 const COLORS = [
   "hsl(205, 65%, 45%)",
@@ -23,6 +23,7 @@ const COLORS = [
 
 const DashboardObra = () => {
   const { obras, estoque, insumos, movimentacoes, entradas, getEstoqueByObra } = useInventory();
+  const today = new Date();
   const [selectedObraId, setSelectedObraId] = useState<string>("");
   const [periodDays, setPeriodDays] = useState<string>("30");
 
@@ -106,6 +107,29 @@ const DashboardObra = () => {
       .slice(0, 5),
     [itensSemMovimentacao]
   );
+
+  // Expiry alerts
+  const expiryAlerts = useMemo(() => {
+    if (!selectedObraId) return { expired: [] as any[], nearExpiry: [] as any[] };
+    const obraEntradas = entradas.filter((e: any) => e.obra_id === selectedObraId && e.validade);
+    const expired: any[] = [];
+    const nearExpiry: any[] = [];
+    const thirtyDaysFromNow = addDays(today, 30);
+
+    obraEntradas.forEach((e: any) => {
+      try {
+        const validade = parseISO(e.validade);
+        const insumo = insumos.find(i => i.id === e.insumo_id);
+        const item = { ...e, insumoName: insumo?.name || "—", validadeDate: validade };
+        if (isBefore(validade, today)) {
+          expired.push(item);
+        } else if (isBefore(validade, thirtyDaysFromNow)) {
+          nearExpiry.push(item);
+        }
+      } catch {}
+    });
+    return { expired, nearExpiry };
+  }, [entradas, selectedObraId, insumos, today]);
 
   // Pie chart for value distribution
   const pieData = top5Valor.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
@@ -273,6 +297,49 @@ const DashboardObra = () => {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Expiry Alerts */}
+      {(expiryAlerts.expired.length > 0 || expiryAlerts.nearExpiry.length > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-warning" />Controle de Validade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {expiryAlerts.expired.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-destructive mb-2">🚫 Materiais Vencidos ({expiryAlerts.expired.length})</h4>
+                <div className="space-y-1">
+                  {expiryAlerts.expired.map((e: any) => (
+                    <div key={e.id} className="flex justify-between items-center p-2 bg-destructive/5 rounded-lg text-sm">
+                      <div>
+                        <span className="text-foreground">{e.insumoName}</span>
+                        {e.lote && <span className="text-xs text-muted-foreground ml-2">Lote: {e.lote}</span>}
+                      </div>
+                      <Badge variant="destructive">Vencido {format(e.validadeDate, "dd/MM/yyyy")}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {expiryAlerts.nearExpiry.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-warning mb-2">⚠️ Próximos do Vencimento ({expiryAlerts.nearExpiry.length})</h4>
+                <div className="space-y-1">
+                  {expiryAlerts.nearExpiry.map((e: any) => (
+                    <div key={e.id} className="flex justify-between items-center p-2 bg-warning/5 rounded-lg text-sm">
+                      <div>
+                        <span className="text-foreground">{e.insumoName}</span>
+                        {e.lote && <span className="text-xs text-muted-foreground ml-2">Lote: {e.lote}</span>}
+                      </div>
+                      <Badge variant="outline" className="border-warning text-warning">Vence {format(e.validadeDate, "dd/MM/yyyy")}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
