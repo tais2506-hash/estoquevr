@@ -43,6 +43,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         obraId: selectedObraId, insumoId: formData.insumoId, notaFiscal: formData.notaFiscal,
         quantity: parseFloat(formData.quantity), unitValue: parseFloat(formData.unitValue),
         totalValue, date: formData.date,
+        validade: formData.validade || undefined,
+        lote: formData.lote || undefined,
       });
       toast.success("Entrada registrada com sucesso!");
       setStep("done");
