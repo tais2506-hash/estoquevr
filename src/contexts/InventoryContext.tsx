@@ -73,8 +73,8 @@ interface InventoryContextType {
   getSelectedObra: () => ObraRow | undefined;
   getEstoqueByObra: (obraId: string) => EstoqueWithInsumo[];
 
-  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string }) => Promise<void>;
-  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string }) => Promise<void>;
+  addEntrada: (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string }) => Promise<void>;
+  addSaida: (data: { obraId: string; insumoId: string; quantity: number; date: string; localAplicacao: string; responsavel: string; locationId?: string; kitId?: string; servicePackageId?: string; lote?: string }) => Promise<void>;
   addTransferencia: (data: { obraOrigemId: string; obraDestinoId: string; insumoId: string; quantity: number; date: string }) => Promise<void>;
   addInventarioItem: (data: { obraId: string; insumoId: string; quantidadeSistema: number; quantidadeFisica: number; diferenca: number; justificativa: string; date: string }) => Promise<void>;
   undoInventarioAjuste: (movimentacaoId: string) => Promise<void>;
