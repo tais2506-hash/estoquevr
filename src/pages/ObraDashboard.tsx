@@ -182,6 +182,7 @@ const ObraDashboard = () => {
       case "emprestimo": return <EmprestimoEstoque onBack={() => setView("menu")} />;
       case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
+      case "kits": return <KitsCRUD obraId={selectedObraId!} onBack={() => setView("menu")} />;
       default: return null;
     }
   };
