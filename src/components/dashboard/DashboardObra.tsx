@@ -108,6 +108,29 @@ const DashboardObra = () => {
     [itensSemMovimentacao]
   );
 
+  // Expiry alerts
+  const expiryAlerts = useMemo(() => {
+    if (!selectedObraId) return { expired: [] as any[], nearExpiry: [] as any[] };
+    const obraEntradas = entradas.filter((e: any) => e.obra_id === selectedObraId && e.validade);
+    const expired: any[] = [];
+    const nearExpiry: any[] = [];
+    const thirtyDaysFromNow = addDays(today, 30);
+
+    obraEntradas.forEach((e: any) => {
+      try {
+        const validade = parseISO(e.validade);
+        const insumo = insumos.find(i => i.id === e.insumo_id);
+        const item = { ...e, insumoName: insumo?.name || "—", validadeDate: validade };
+        if (isBefore(validade, today)) {
+          expired.push(item);
+        } else if (isBefore(validade, thirtyDaysFromNow)) {
+          nearExpiry.push(item);
+        }
+      } catch {}
+    });
+    return { expired, nearExpiry };
+  }, [entradas, selectedObraId, insumos, today]);
+
   // Pie chart for value distribution
   const pieData = top5Valor.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
 
