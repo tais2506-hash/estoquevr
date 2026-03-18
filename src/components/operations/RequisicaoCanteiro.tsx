@@ -445,13 +445,10 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
           {obraLocations.length > 0 ? (
             <div className="space-y-2">
               <Label>Local de Aplicação</Label>
-              <SearchableSelect
-                options={obraLocations.map(l => ({ value: l.id, label: getLocationPath(l.id) }))}
+              <CascadingLocationSelect
+                locations={obraLocations}
                 value={formData.locationId}
                 onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-                placeholder="Selecione o local"
-                searchPlaceholder="Buscar local..."
-                emptyMessage="Nenhum local encontrado."
               />
             </div>
           ) : (
