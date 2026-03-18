@@ -32,7 +32,7 @@ const AppRoutes = () => (
     <Route path="/" element={<Login />} />
     <Route path="/obras" element={<ProtectedRoute><ObraSelect /></ProtectedRoute>} />
     <Route path="/obra" element={<ProtectedRoute><ObraDashboard /></ProtectedRoute>} />
-    <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+    <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

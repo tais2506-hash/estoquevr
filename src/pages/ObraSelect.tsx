@@ -20,7 +20,7 @@ const statusLabels: Record<string, string> = {
 
 const ObraSelect = () => {
   const { obras, setSelectedObraId, getEstoqueByObra, loading } = useInventory();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
 
   const handleSelect = (obraId: string) => {
@@ -55,7 +55,7 @@ const ObraSelect = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isAdmin && (
+            {(isAdmin || hasPermission("dashboard.geral") || hasPermission("dashboard.obra") || hasPermission("cadastro.obras") || hasPermission("cadastro.insumos") || hasPermission("admin.usuarios") || hasPermission("admin.perfis") || hasPermission("relatorios.visualizar")) && (
               <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Menu
@@ -78,7 +78,7 @@ const ObraSelect = () => {
           <div className="text-center py-16 text-muted-foreground">
             <Building2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>Nenhuma obra cadastrada.</p>
-            {isAdmin && <p className="text-sm mt-2">Acesse o Dashboard para cadastrar obras.</p>}
+            {(isAdmin || hasPermission("cadastro.obras")) && <p className="text-sm mt-2">Acesse o Menu para cadastrar obras.</p>}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
