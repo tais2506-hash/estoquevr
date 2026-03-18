@@ -270,6 +270,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       user_id: userId,
       validade: data.validade || null,
       lote: data.lote || null,
+      oc_item_id: data.ocItemId || null,
     } as any).select().single();
     if (error) throw error;
 
