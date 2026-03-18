@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,8 @@ const InsumosCRUD = () => {
   const { insumos, estoque } = useInventory();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [inactiveInsumos, setInactiveInsumos] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
   const [dbUnits, setDbUnits] = useState<{ id: string; name: string; abbreviation: string }[]>([]);
 
@@ -42,6 +44,15 @@ const InsumosCRUD = () => {
     };
     fetchLists();
   }, []);
+
+  useEffect(() => {
+    if (!showInactive) { setInactiveInsumos([]); return; }
+    const fetchInactive = async () => {
+      const { data } = await supabase.from("insumos").select("*").not("deleted_at", "is", null).order("name");
+      setInactiveInsumos((data as any[]) || []);
+    };
+    fetchInactive();
+  }, [showInactive, insumos]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({
@@ -124,6 +135,15 @@ const InsumosCRUD = () => {
       setSelected([]); setBulkDeleteOpen(false);
       queryClient.invalidateQueries({ queryKey: ["insumos"] });
     } catch (err: any) { toast.error(err.message || "Erro ao desativar"); }
+  };
+
+  const handleReactivate = async (id: string) => {
+    try {
+      const { error } = await supabase.from("insumos").update({ deleted_at: null } as any).eq("id", id);
+      if (error) throw error;
+      toast.success("Insumo reativado");
+      queryClient.invalidateQueries({ queryKey: ["insumos"] });
+    } catch (err: any) { toast.error(err.message || "Erro ao reativar"); }
   };
 
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -278,6 +298,10 @@ const InsumosCRUD = () => {
           className="w-[180px]"
         />
         {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="w-4 h-4 mr-1" />Limpar filtros</Button>}
+        <div className="flex items-center gap-2 ml-auto">
+          <Label className="text-sm text-muted-foreground">Mostrar desativados</Label>
+          <Switch checked={showInactive} onCheckedChange={setShowInactive} />
+        </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -335,6 +359,45 @@ const InsumosCRUD = () => {
           </tbody>
         </table>
       </div>
+
+      {showInactive && inactiveInsumos.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Insumos Desativados ({inactiveInsumos.length})</h3>
+          <div className="bg-card rounded-xl border border-border overflow-hidden opacity-75">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Código</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Unidade</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Categoria</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveInsumos.map(i => (
+                  <tr key={i.id} className="border-b border-border/50 last:border-0">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-muted-foreground line-through">{i.name}</span>
+                        <Badge variant="secondary" className="text-xs">Desativado</Badge>
+                      </div>
+                    </td>
+                    <td className="p-3 text-muted-foreground hidden sm:table-cell font-mono text-xs">{i.code}</td>
+                    <td className="p-3 text-muted-foreground">{i.unit}</td>
+                    <td className="p-3 text-muted-foreground hidden md:table-cell">{i.category || "—"}</td>
+                    <td className="p-3 text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleReactivate(i.id)}>
+                        <RotateCcw className="w-4 h-4 mr-1" />Reativar
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
