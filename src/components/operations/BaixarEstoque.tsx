@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CascadingLocationSelect } from "@/components/ui/cascading-location-select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
-  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages } = useInventory();
+  const { selectedObraId, addSaida, getEstoqueByObra, insumos, kits, kitItems, locations, servicePackages, entradas } = useInventory();
   const [done, setDone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
@@ -20,7 +21,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [formData, setFormData] = useState({
     insumoId: "", kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
-    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "",
+    localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "", lote: "",
   });
 
   const estoqueObra = selectedObraId ? getEstoqueByObra(selectedObraId) : [];
