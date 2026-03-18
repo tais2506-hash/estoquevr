@@ -249,6 +249,82 @@ export type Database = {
           },
         ]
       }
+      emprestimos: {
+        Row: {
+          aprovador_nome: string | null
+          aprovador_user_id: string | null
+          created_at: string
+          data_devolucao: string | null
+          data_prevista_devolucao: string
+          date: string
+          id: string
+          insumo_id: string
+          obra_emprestadora_id: string
+          obra_solicitante_id: string
+          observacoes: string | null
+          quantity: number
+          solicitante_nome: string
+          solicitante_user_id: string
+          status: string
+        }
+        Insert: {
+          aprovador_nome?: string | null
+          aprovador_user_id?: string | null
+          created_at?: string
+          data_devolucao?: string | null
+          data_prevista_devolucao: string
+          date: string
+          id?: string
+          insumo_id: string
+          obra_emprestadora_id: string
+          obra_solicitante_id: string
+          observacoes?: string | null
+          quantity: number
+          solicitante_nome?: string
+          solicitante_user_id: string
+          status?: string
+        }
+        Update: {
+          aprovador_nome?: string | null
+          aprovador_user_id?: string | null
+          created_at?: string
+          data_devolucao?: string | null
+          data_prevista_devolucao?: string
+          date?: string
+          id?: string
+          insumo_id?: string
+          obra_emprestadora_id?: string
+          obra_solicitante_id?: string
+          observacoes?: string | null
+          quantity?: number
+          solicitante_nome?: string
+          solicitante_user_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emprestimos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emprestimos_obra_emprestadora_id_fkey"
+            columns: ["obra_emprestadora_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emprestimos_obra_solicitante_id_fkey"
+            columns: ["obra_solicitante_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entradas: {
         Row: {
           avaliacao_id: string | null

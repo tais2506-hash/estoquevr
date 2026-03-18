@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2 } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,14 +19,16 @@ import BaixarEstoque from "@/components/operations/BaixarEstoque";
 import TransferenciaEstoque from "@/components/operations/TransferenciaEstoque";
 import InventarioConferencia from "@/components/operations/InventarioConferencia";
 import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
+import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
   { key: "baixar" as const, label: "Baixar Estoque", icon: ArrowDown, description: "Saída de materiais", color: "text-destructive", permission: "estoque.saida.criar" },
   { key: "requisicao" as const, label: "Requisição de Canteiro", icon: FileText, description: "Solicitar materiais online", color: "text-amber-500", permission: "requisicao.criar" },
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
+  { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
 ];
 
@@ -175,6 +177,7 @@ const ObraDashboard = () => {
       case "subir": return <SubirEstoque onBack={() => setView("menu")} />;
       case "baixar": return <BaixarEstoque onBack={() => setView("menu")} />;
       case "transferir": return <TransferenciaEstoque onBack={() => setView("menu")} />;
+      case "emprestimo": return <EmprestimoEstoque onBack={() => setView("menu")} />;
       case "inventario": return <InventarioConferencia onBack={() => setView("menu")} />;
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
       default: return null;
