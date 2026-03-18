@@ -44,6 +44,8 @@ interface ReqGroup {
 interface ItemLinha {
   insumoId: string;
   quantity: string;
+  locationId: string;
+  localAplicacao: string;
 }
 
 const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
