@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 type EstoqueRow = {
   id: string; obra_id: string; insumo_id: string; quantity: number;
   average_unit_cost: number; total_value: number; updated_at: string;
+  lote: string | null; validade: string | null;
 };
 type InsumoRow = {
   id: string; code: string; name: string; unit: string; category: string;
