@@ -156,23 +156,25 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       }
       setIsSubmitting(true);
       try {
-        const localAplicacao = formData.locationId
-          ? getLocationPath(formData.locationId)
-          : formData.localAplicacao || "Não especificado";
         const now = new Date().toISOString();
 
-        const rows = validItems.map(it => ({
-          obra_id: selectedObraId,
-          insumo_id: it.insumoId,
-          quantity: parseFloat(it.quantity),
-          local_aplicacao: localAplicacao,
-          location_id: formData.locationId || null,
-          responsavel: formData.responsavel,
-          solicitante_nome: formData.solicitanteNome || user.name,
-          date: formData.date,
-          user_id: user.id,
-          created_at: now,
-        }));
+        const rows = validItems.map(it => {
+          const localAplicacao = it.locationId
+            ? getLocationPath(it.locationId)
+            : it.localAplicacao || "Não especificado";
+          return {
+            obra_id: selectedObraId,
+            insumo_id: it.insumoId,
+            quantity: parseFloat(it.quantity),
+            local_aplicacao: localAplicacao,
+            location_id: it.locationId || null,
+            responsavel: formData.responsavel,
+            solicitante_nome: formData.solicitanteNome || user.name,
+            date: formData.date,
+            user_id: user.id,
+            created_at: now,
+          };
+        });
         const { error } = await supabase.from("requisicoes").insert(rows);
         if (error) throw error;
         toast.success(`Requisição enviada com ${validItems.length} ${validItems.length === 1 ? "item" : "itens"}!`);
