@@ -137,6 +137,15 @@ const InsumosCRUD = () => {
     } catch (err: any) { toast.error(err.message || "Erro ao desativar"); }
   };
 
+  const handleReactivate = async (id: string) => {
+    try {
+      const { error } = await supabase.from("insumos").update({ deleted_at: null } as any).eq("id", id);
+      if (error) throw error;
+      toast.success("Insumo reativado");
+      queryClient.invalidateQueries({ queryKey: ["insumos"] });
+    } catch (err: any) { toast.error(err.message || "Erro ao reativar"); }
+  };
+
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleAll = () => {
     const ids = filtered.map(i => i.id);
