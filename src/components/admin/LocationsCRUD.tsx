@@ -12,6 +12,8 @@ import { Plus, Pencil, Trash2, Search, ChevronRight, ChevronDown, MapPin } from 
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import SpreadsheetImport from "./SpreadsheetImport";
+import BulkLocationGenerator from "./BulkLocationGenerator";
+import DuplicateLocationStructure from "./DuplicateLocationStructure";
 
 const locationColumns = [
   { key: "name", label: "Nome", required: true, example: "Apt 101" },
@@ -314,6 +316,8 @@ const LocationsCRUD = () => {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={collapseAll}>Recolher</Button>
           <Button variant="outline" size="sm" onClick={expandAll}>Expandir</Button>
+          <BulkLocationGenerator obras={obras} />
+          <DuplicateLocationStructure obras={obras} />
           <SpreadsheetImport
             title="Importar Locais"
             columns={locationColumns}
