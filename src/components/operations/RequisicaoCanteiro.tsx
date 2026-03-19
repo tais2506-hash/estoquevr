@@ -159,23 +159,27 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       try {
         const now = new Date().toISOString();
 
-        const rows = validItems.map(it => {
-          const localAplicacao = it.locationId
-            ? getLocationPath(it.locationId)
-            : it.localAplicacao || "Não especificado";
-          return {
-            obra_id: selectedObraId,
-            insumo_id: it.insumoId,
-            quantity: parseFloat(it.quantity),
-            local_aplicacao: localAplicacao,
-            location_id: it.locationId || null,
-            responsavel: formData.responsavel,
-            solicitante_nome: formData.solicitanteNome || user.name,
-            date: formData.date,
-            user_id: user.id,
-            created_at: now,
-          };
-        });
+        const rows: any[] = [];
+        for (const it of validItems) {
+          const effectiveLocationIds = it.locationIds.length > 0 ? it.locationIds : (it.locationId ? [it.locationId] : [""]);
+          for (const locId of effectiveLocationIds) {
+            const localAplicacao = locId
+              ? getLocationPath(locId)
+              : it.localAplicacao || "Não especificado";
+            rows.push({
+              obra_id: selectedObraId,
+              insumo_id: it.insumoId,
+              quantity: parseFloat(it.quantity),
+              local_aplicacao: localAplicacao,
+              location_id: locId || null,
+              responsavel: formData.responsavel,
+              solicitante_nome: formData.solicitanteNome || user.name,
+              date: formData.date,
+              user_id: user.id,
+              created_at: now,
+            });
+          }
+        }
         const { error } = await supabase.from("requisicoes").insert(rows);
         if (error) throw error;
         toast.success(`Requisição enviada com ${validItems.length} ${validItems.length === 1 ? "item" : "itens"}!`);
