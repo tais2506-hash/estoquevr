@@ -16,10 +16,11 @@ interface FvmAnswer {
 }
 
 interface FvmFormProps {
-  onComplete: (answers: FvmAnswer[], observacoesGerais: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => void;
+  onComplete: (answers: FvmAnswer[], observacoesGerais: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string; fabricanteId?: string }[]) => void;
   onSkip: () => void;
   insumoIds?: string[];
   notaFiscal?: string;
+  fabricanteByInsumo?: Record<string, string>; // insumoId -> fabricanteId
 }
 
 const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFormProps) => {
