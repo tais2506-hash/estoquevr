@@ -122,7 +122,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         return;
       }
       const selectedInsumo = insumos.find(i => i.id === item.insumoId);
-      if (selectedInsumo?.controla_rastreabilidade && !formData.locationId && !(retroativo && semLocal)) {
+      if (selectedInsumo?.controla_rastreabilidade && !item.locationId && !(retroativo && semLocal)) {
         toast.error(`Local é obrigatório para ${selectedInsumo.name} (rastreabilidade)`);
         return;
       }
