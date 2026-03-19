@@ -76,7 +76,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
     .filter(i => i && (i as any).tipo_laudo === "por_lote");
 
   // Check per-lote laudos are provided
-  const allPerLoteLaudosProvided = insumosPerLote.every(i => laudosPorLote[i!.id]);
+  
 
   const getLaudoStatus = (laudo: any) => {
     if (!laudo.validade) return null;
