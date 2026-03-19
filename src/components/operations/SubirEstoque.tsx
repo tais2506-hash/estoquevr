@@ -224,6 +224,25 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
+  if (step === "fvm") {
+    return (
+      <div className="animate-fade-in">
+        <button onClick={() => setStep("manual")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="w-4 h-4" /> Voltar ao formulário
+        </button>
+        <h2 className="text-xl font-bold text-foreground mb-4">Verificação de Materiais</h2>
+        <p className="text-sm text-muted-foreground mb-4">NF: <strong>{sharedData.notaFiscal}</strong> — {items.filter(it => it.insumoId).length} item(ns)</p>
+        <div className="max-w-xl">
+          <FvmForm
+            onComplete={(answers, obs) => registerEntradas(answers, obs)}
+            onSkip={() => registerEntradas()}
+          />
+        </div>
+        {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
+      </div>
+    );
+  }
+
   if (step === "importar") {
     return <ImportarPlanilha onBack={() => setStep("choose")} />;
   }
