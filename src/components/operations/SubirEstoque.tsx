@@ -415,6 +415,20 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
                     />
                   </div>
                 )}
+
+                {showFabricante && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Fabricante <span className="text-destructive">*</span></Label>
+                    <SearchableSelect
+                      options={fabOpts}
+                      value={item.fabricanteId}
+                      onValueChange={v => updateItemLine(idx, "fabricanteId", v)}
+                      placeholder="Selecione o fabricante"
+                      searchPlaceholder="Buscar fabricante..."
+                      emptyMessage="Nenhum fabricante vinculado."
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
