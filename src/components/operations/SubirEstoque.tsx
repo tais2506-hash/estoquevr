@@ -290,6 +290,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
             onSkip={() => registerEntradas()}
             insumoIds={items.filter(it => it.insumoId).map(it => it.insumoId)}
             notaFiscal={sharedData.notaFiscal}
+            fabricanteByInsumo={Object.fromEntries(items.filter(it => it.insumoId && it.fabricanteId).map(it => [it.insumoId, it.fabricanteId]))}
           />
         </div>
         {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
