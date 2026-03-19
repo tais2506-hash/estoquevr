@@ -110,6 +110,7 @@ const AdminDashboard = () => {
               {(isAdmin || hasPermission("cadastro.servicos")) && <TabsTrigger value="servicos">Serviços</TabsTrigger>}
               {(isAdmin || hasPermission("admin.usuarios")) && <TabsTrigger value="usuarios">Usuários</TabsTrigger>}
               {(isAdmin || hasPermission("admin.perfis")) && <TabsTrigger value="perfis">Perfis</TabsTrigger>}
+              {(isAdmin || hasPermission("fvm.gerenciar")) && <TabsTrigger value="fvm">FVM</TabsTrigger>}
               {isAdmin && <TabsTrigger value="configuracoes">Configurações</TabsTrigger>}
             </TabsList>
             <ScrollBar orientation="horizontal" />
