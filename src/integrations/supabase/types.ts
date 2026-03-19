@@ -566,7 +566,7 @@ export type Database = {
           created_at: string
           date: string
           documentacao_ok: boolean
-          fornecedor_id: string
+          fornecedor_id: string | null
           id: string
           nota_fiscal: string
           obra_id: string
@@ -580,7 +580,7 @@ export type Database = {
           created_at?: string
           date: string
           documentacao_ok?: boolean
-          fornecedor_id: string
+          fornecedor_id?: string | null
           id?: string
           nota_fiscal: string
           obra_id: string
@@ -594,7 +594,7 @@ export type Database = {
           created_at?: string
           date?: string
           documentacao_ok?: boolean
-          fornecedor_id?: string
+          fornecedor_id?: string | null
           id?: string
           nota_fiscal?: string
           obra_id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.fvms ALTER COLUMN fornecedor_id DROP NOT NULL;
