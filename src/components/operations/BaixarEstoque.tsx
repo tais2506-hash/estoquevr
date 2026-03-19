@@ -310,7 +310,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                       <div className="flex-1 space-y-1">
                         {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
                         <SearchableSelect
-                          options={getInsumoOptions(item.insumoId)}
+                          options={getInsumoOptions()}
                           value={item.insumoId}
                           onValueChange={v => updateItemLine(idx, "insumoId", v)}
                           placeholder="Buscar por nome, código ou categoria..."
