@@ -173,7 +173,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
               const status = latestLaudo ? getLaudoStatus(latestLaudo) : null;
               return (
                 <div key={id} className="flex items-center justify-between py-1 gap-2">
-                  <span className="text-sm flex-1">{insumo.name}</span>
+                  <span className="text-sm flex-1">{displayName}</span>
                   {latestLaudo ? (
                     <div className="flex items-center gap-1">
                       {status === "vencido" && <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1" />Vencido</Badge>}
