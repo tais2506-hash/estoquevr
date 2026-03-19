@@ -465,6 +465,27 @@ export type Database = {
           },
         ]
       }
+      fabricantes: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       fornecedores: {
         Row: {
           cnpj: string
@@ -855,9 +876,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          fabricante_id: string | null
           file_name: string
           file_url: string
-          fornecedor_id: string | null
           fvm_id: string | null
           id: string
           insumo_id: string
@@ -870,9 +891,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          fabricante_id?: string | null
           file_name: string
           file_url: string
-          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id: string
@@ -885,9 +906,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          fabricante_id?: string | null
           file_name?: string
           file_url?: string
-          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id?: string
@@ -899,10 +920,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "laudos_fornecedor_id_fkey"
-            columns: ["fornecedor_id"]
+            foreignKeyName: "laudos_fabricante_id_fkey"
+            columns: ["fabricante_id"]
             isOneToOne: false
-            referencedRelation: "fornecedores"
+            referencedRelation: "fabricantes"
             referencedColumns: ["id"]
           },
           {
