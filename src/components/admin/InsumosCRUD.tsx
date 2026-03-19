@@ -59,6 +59,7 @@ const InsumosCRUD = () => {
     name: "", code: "", unit: "", category: "",
     controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false,
     material_nao_estocavel: false, estoque_minimo: 0,
+    tipo_laudo: "nao_controlado" as string,
   });
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -77,7 +78,7 @@ const InsumosCRUD = () => {
   });
 
   const resetForm = () => {
-    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, estoque_minimo: 0 });
+    setForm({ name: "", code: "", unit: "", category: "", controla_estoque: true, controla_consumo: true, controla_rastreabilidade: false, material_nao_estocavel: false, estoque_minimo: 0, tipo_laudo: "nao_controlado" });
     setEditing(null);
   };
 
@@ -91,6 +92,7 @@ const InsumosCRUD = () => {
       controla_estoque: insumo.controla_estoque ?? true, controla_consumo: insumo.controla_consumo ?? true,
       controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
       material_nao_estocavel: insumo.material_nao_estocavel ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
+      tipo_laudo: insumo.tipo_laudo ?? "nao_controlado",
     });
     setDialogOpen(true);
   };
@@ -102,7 +104,7 @@ const InsumosCRUD = () => {
         name: form.name, code: form.code, unit: form.unit, category: form.category,
         controla_estoque: form.controla_estoque, controla_consumo: form.controla_consumo,
         controla_rastreabilidade: form.controla_rastreabilidade, material_nao_estocavel: form.material_nao_estocavel,
-        estoque_minimo: form.estoque_minimo,
+        estoque_minimo: form.estoque_minimo, tipo_laudo: form.tipo_laudo,
       };
       if (editing) {
         const { error } = await supabase.from("insumos").update(payload as any).eq("id", editing.id);
@@ -286,7 +288,25 @@ const InsumosCRUD = () => {
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla consumo?</Label><Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla rastreabilidade?</Label><Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Material não estocável?</Label><Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} /></div>
-                  
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Controle de Laudo</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Tipo de laudo</Label>
+                    <Select value={form.tipo_laudo} onValueChange={v => setForm({ ...form, tipo_laudo: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nao_controlado">Não controlado (sem laudo)</SelectItem>
+                        <SelectItem value="global">Laudo global (válido para todas as obras)</SelectItem>
+                        <SelectItem value="por_lote">Laudo por lote/NF (inserido na FVM)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {form.tipo_laudo === "global" && "O laudo será cadastrado uma vez e validará o insumo em todas as obras."}
+                      {form.tipo_laudo === "por_lote" && "O laudo deverá ser anexado durante a FVM, vinculado ao lote/NF da entrada."}
+                      {form.tipo_laudo === "nao_controlado" && "Este insumo não requer laudo de qualidade."}
+                    </p>
+                  </div>
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>

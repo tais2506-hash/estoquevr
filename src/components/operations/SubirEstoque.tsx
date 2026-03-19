@@ -115,7 +115,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     setStep("fvm");
   };
 
-  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string) => {
+  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => {
     if (!selectedObraId || isSubmitting) return;
     const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
 
@@ -160,6 +160,27 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           }));
           const { error: ncError } = await supabase.from("nao_conformidades").insert(ncRows);
           if (ncError) console.error("Erro ao criar NCs:", ncError);
+        }
+      }
+
+      // Upload per-lote laudos if any
+      if (laudosPorLote && laudosPorLote.length > 0) {
+        for (const laudoFile of laudosPorLote) {
+          const ext = laudoFile.file.name.split(".").pop();
+          const path = `${laudoFile.insumoId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage.from("laudos").upload(path, laudoFile.file);
+          if (uploadErr) { console.error("Erro upload laudo:", uploadErr); continue; }
+          const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
+          await supabase.from("laudos").insert({
+            insumo_id: laudoFile.insumoId,
+            file_url: urlData.publicUrl,
+            file_name: laudoFile.file.name,
+            nota_fiscal: laudoFile.notaFiscal || sharedData.notaFiscal,
+            lote: laudoFile.lote || null,
+            fvm_id: fvmId || null,
+            obra_id: selectedObraId,
+            created_by: user?.id || "",
+          } as any);
         }
       }
 
@@ -234,8 +255,10 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <p className="text-sm text-muted-foreground mb-4">NF: <strong>{sharedData.notaFiscal}</strong> — {items.filter(it => it.insumoId).length} item(ns)</p>
         <div className="max-w-xl">
           <FvmForm
-            onComplete={(answers, obs) => registerEntradas(answers, obs)}
+            onComplete={(answers, obs, laudos) => registerEntradas(answers, obs, laudos)}
             onSkip={() => registerEntradas()}
+            insumoIds={items.filter(it => it.insumoId).map(it => it.insumoId)}
+            notaFiscal={sharedData.notaFiscal}
           />
         </div>
         {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
