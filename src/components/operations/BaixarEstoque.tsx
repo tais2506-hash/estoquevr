@@ -13,6 +13,8 @@ interface ItemLinha {
   insumoId: string;
   quantity: string;
   lote: string;
+  locationId: string;
+  localAplicacao: string;
 }
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
@@ -26,7 +28,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
 
   // Shared fields
   const [formData, setFormData] = useState({
@@ -60,12 +62,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     return Array.from(cats).sort();
   }, [estoqueObra]);
 
-  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
-
-  const getInsumoOptions = (currentInsumoId: string) =>
+  const getInsumoOptions = () =>
     estoqueObra
       .filter(e => !categoryFilter || e.insumo.category === categoryFilter)
-      .filter(e => !usedInsumoIds.includes(e.insumo_id) || e.insumo_id === currentInsumoId)
       .map(e => {
         const ins = insumos.find(i => i.id === e.insumo_id);
         return {
@@ -97,7 +96,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   );
 
   // Multi-item helpers
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", lote: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
@@ -123,28 +122,28 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         return;
       }
       const selectedInsumo = insumos.find(i => i.id === item.insumoId);
-      if (selectedInsumo?.controla_rastreabilidade && !formData.locationId && !(retroativo && semLocal)) {
+      if (selectedInsumo?.controla_rastreabilidade && !item.locationId && !(retroativo && semLocal)) {
         toast.error(`Local é obrigatório para ${selectedInsumo.name} (rastreabilidade)`);
         return;
       }
     }
 
-    const retroLabel = retroativo ? " [RETROATIVO]" : "";
-    const localAplicacao = (retroativo && semLocal)
-      ? "Sem histórico de local" + retroLabel
-      : formData.locationId
-        ? getLocationPath(formData.locationId) + retroLabel
-        : (formData.localAplicacao || "Não especificado") + retroLabel;
-
     const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
 
     setIsSubmitting(true);
     try {
       for (const item of validItems) {
+        const localAplicacao = (retroativo && semLocal)
+          ? "Sem histórico de local" + retroLabel
+          : item.locationId
+            ? getLocationPath(item.locationId) + retroLabel
+            : (item.localAplicacao || "Não especificado") + retroLabel;
+
         await addSaida({
           obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
           date: dateToUse, localAplicacao, responsavel: formData.responsavel,
-          locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
+          locationId: (retroativo && semLocal) ? undefined : (item.locationId || undefined),
           servicePackageId: formData.servicePackageId || undefined,
           lote: item.lote || undefined,
         });
@@ -208,7 +207,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const resetAll = () => {
     setDone(false);
     setRetroativo(false); setSemLocal(false); setSemData(false); setCategoryFilter("");
-    setItems([{ insumoId: "", quantity: "", lote: "" }]);
+    setItems([{ insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
     setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
@@ -227,11 +226,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
-  // Check if any selected insumo requires location
-  const anyRequiresLocation = items.some(it => {
-    const ins = insumos.find(i => i.id === it.insumoId);
-    return ins?.controla_rastreabilidade;
-  });
 
   return (
     <div className="animate-fade-in">
@@ -311,7 +305,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                       <div className="flex-1 space-y-1">
                         {idx === 0 && <Label className="text-xs text-muted-foreground">Insumo</Label>}
                         <SearchableSelect
-                          options={getInsumoOptions(item.insumoId)}
+                          options={getInsumoOptions()}
                           value={item.insumoId}
                           onValueChange={v => updateItemLine(idx, "insumoId", v)}
                           placeholder="Buscar por nome, código ou categoria..."
@@ -351,6 +345,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                               emptyMessage="Nenhum lote."
                             />
                           </div>
+                        )}
+                      </div>
+                    )}
+                    {!(retroativo && semLocal) && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Local de Aplicação</Label>
+                        {obraLocations.length > 0 ? (
+                          <CascadingLocationSelect
+                            locations={obraLocations}
+                            value={item.locationId}
+                            onValueChange={v => updateItemLine(idx, "locationId", v)}
+                          />
+                        ) : (
+                          <Input
+                            value={item.localAplicacao}
+                            onChange={e => updateItemLine(idx, "localAplicacao", e.target.value)}
+                            placeholder="Ex: Bloco A - 3º andar"
+                          />
                         )}
                       </div>
                     )}
@@ -395,29 +407,8 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
           <p className="text-xs text-muted-foreground italic">📅 Data não informada — será registrado com a data de hoje.</p>
         )}
 
-        {/* Location - cascading */}
-        {!(retroativo && semLocal) && obraLocations.length > 0 && (
-          <div className="space-y-2">
-            <Label>Local {anyRequiresLocation && !(retroativo && semLocal) && <span className="text-destructive">*</span>}</Label>
-            <CascadingLocationSelect
-              locations={obraLocations}
-              value={formData.locationId}
-              onValueChange={v => setFormData(p => ({ ...p, locationId: v }))}
-              required={!!anyRequiresLocation}
-            />
-          </div>
-        )}
-
         {retroativo && semLocal && (
           <p className="text-xs text-muted-foreground italic">📍 Local não informado — será registrado como "Sem histórico de local".</p>
-        )}
-
-        {/* Fallback text location */}
-        {!(retroativo && semLocal) && obraLocations.length === 0 && (
-          <div className="space-y-2">
-            <Label>Local de Aplicação</Label>
-            <Input value={formData.localAplicacao} onChange={e => setFormData(p => ({ ...p, localAplicacao: e.target.value }))} placeholder="Ex: Bloco A - 3º andar" />
-          </div>
         )}
 
         <div className="space-y-2">
