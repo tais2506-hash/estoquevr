@@ -265,7 +265,7 @@ const LaudosCRUD = () => {
             <thead>
               <tr className="bg-muted/50 border-b border-border">
                 <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
-                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Arquivo</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Fornecedor</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Lote / NF</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Validade</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
