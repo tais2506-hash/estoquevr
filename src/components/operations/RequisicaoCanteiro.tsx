@@ -381,6 +381,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                         locations={obraLocations}
                         value={item.locationId}
                         onValueChange={v => updateItemLine(idx, "locationId", v)}
+                        multiSelect
+                        multiValue={item.locationIds}
+                        onMultiValueChange={ids => setItems(prev => prev.map((it, i) => i === idx ? { ...it, locationIds: ids } : it))}
                       />
                     ) : (
                       <Input
