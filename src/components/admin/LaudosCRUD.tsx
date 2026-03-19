@@ -27,10 +27,20 @@ const LaudosCRUD = () => {
 
   const [form, setForm] = useState({
     insumoId: "",
+    fornecedorId: "",
     validade: "",
     lote: "",
     notaFiscal: "",
     file: null as File | null,
+  });
+
+  const { data: fornecedores = [] } = useQuery({
+    queryKey: ["fornecedores_laudos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fornecedores").select("id, name, cnpj").is("deleted_at", null).order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: laudos = [], isLoading } = useQuery({
@@ -67,10 +77,17 @@ const LaudosCRUD = () => {
     return "valido";
   };
 
+  const fornecedorOptions = useMemo(() =>
+    fornecedores.map(f => ({ value: f.id, label: `${f.name} (${f.cnpj})` })),
+    [fornecedores]
+  );
+
   const filtered = laudos.filter((l: any) => {
     const insumo = insumos.find(i => i.id === l.insumo_id);
+    const fornecedor = fornecedores.find(f => f.id === l.fornecedor_id);
     const matchSearch = !search || 
       insumo?.name.toLowerCase().includes(search.toLowerCase()) ||
+      fornecedor?.name.toLowerCase().includes(search.toLowerCase()) ||
       l.file_name?.toLowerCase().includes(search.toLowerCase()) ||
       l.lote?.toLowerCase().includes(search.toLowerCase()) ||
       l.nota_fiscal?.toLowerCase().includes(search.toLowerCase());
@@ -81,8 +98,8 @@ const LaudosCRUD = () => {
   });
 
   const handleUpload = async () => {
-    if (!form.insumoId || !form.file) {
-      toast.error("Selecione o insumo e o arquivo do laudo");
+    if (!form.insumoId || !form.fornecedorId || !form.file) {
+      toast.error("Selecione o insumo, o fornecedor e o arquivo do laudo");
       return;
     }
     setUploading(true);
@@ -98,6 +115,7 @@ const LaudosCRUD = () => {
 
       const { error } = await supabase.from("laudos").insert({
         insumo_id: form.insumoId,
+        fornecedor_id: form.fornecedorId,
         file_url: urlData.publicUrl,
         file_name: form.file.name,
         validade: form.validade || null,
@@ -110,7 +128,7 @@ const LaudosCRUD = () => {
       toast.success("Laudo cadastrado com sucesso");
       queryClient.invalidateQueries({ queryKey: ["laudos"] });
       setDialogOpen(false);
-      setForm({ insumoId: "", validade: "", lote: "", notaFiscal: "", file: null });
+      setForm({ insumoId: "", fornecedorId: "", validade: "", lote: "", notaFiscal: "", file: null });
     } catch (err: any) {
       toast.error(err.message || "Erro ao cadastrar laudo");
     } finally {
@@ -166,6 +184,16 @@ const LaudosCRUD = () => {
                   onValueChange={v => setForm({ ...form, insumoId: v })}
                   placeholder="Selecione o insumo"
                   searchPlaceholder="Buscar por nome ou código..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fornecedor <span className="text-destructive">*</span></Label>
+                <SearchableSelect
+                  options={fornecedorOptions}
+                  value={form.fornecedorId}
+                  onValueChange={v => setForm({ ...form, fornecedorId: v })}
+                  placeholder="Selecione o fornecedor"
+                  searchPlaceholder="Buscar fornecedor..."
                 />
               </div>
               <div className="space-y-2">
@@ -237,7 +265,7 @@ const LaudosCRUD = () => {
             <thead>
               <tr className="bg-muted/50 border-b border-border">
                 <th className="text-left p-3 font-medium text-muted-foreground">Insumo</th>
-                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Arquivo</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Fornecedor</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Lote / NF</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Validade</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
@@ -247,10 +275,11 @@ const LaudosCRUD = () => {
             <tbody>
               {filtered.map((l: any) => {
                 const insumo = insumos.find(i => i.id === l.insumo_id);
+                const fornecedor = fornecedores.find(f => f.id === l.fornecedor_id);
                 return (
                   <tr key={l.id} className="border-b border-border/50 last:border-0">
                     <td className="p-3 font-medium text-foreground">{insumo?.name || "—"}</td>
-                    <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">{l.file_name}</td>
+                    <td className="p-3 text-muted-foreground text-xs">{fornecedor?.name || "—"}</td>
                     <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">
                       {l.lote && <span className="mr-2">Lote: {l.lote}</span>}
                       {l.nota_fiscal && <span>NF: {l.nota_fiscal}</span>}
