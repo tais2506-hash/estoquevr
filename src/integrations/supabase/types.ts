@@ -495,6 +495,72 @@ export type Database = {
         }
         Relationships: []
       }
+      fvm_answers: {
+        Row: {
+          conforme: boolean
+          created_at: string
+          fvm_id: string
+          id: string
+          observacao: string | null
+          question_id: string
+        }
+        Insert: {
+          conforme?: boolean
+          created_at?: string
+          fvm_id: string
+          id?: string
+          observacao?: string | null
+          question_id: string
+        }
+        Update: {
+          conforme?: boolean
+          created_at?: string
+          fvm_id?: string
+          id?: string
+          observacao?: string | null
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fvm_answers_fvm_id_fkey"
+            columns: ["fvm_id"]
+            isOneToOne: false
+            referencedRelation: "fvms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fvm_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "fvm_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fvm_questions: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          sort_order: number
+          text: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          sort_order?: number
+          text: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          sort_order?: number
+          text?: string
+        }
+        Relationships: []
+      }
       fvms: {
         Row: {
           created_at: string
@@ -907,6 +973,80 @@ export type Database = {
           },
           {
             foreignKeyName: "movimentacoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nao_conformidades: {
+        Row: {
+          created_at: string
+          description: string
+          fvm_answer_id: string | null
+          fvm_id: string
+          id: string
+          insumo_id: string | null
+          obra_id: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          fvm_answer_id?: string | null
+          fvm_id: string
+          id?: string
+          insumo_id?: string | null
+          obra_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          fvm_answer_id?: string | null
+          fvm_id?: string
+          id?: string
+          insumo_id?: string | null
+          obra_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nao_conformidades_fvm_answer_id_fkey"
+            columns: ["fvm_answer_id"]
+            isOneToOne: false
+            referencedRelation: "fvm_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nao_conformidades_fvm_id_fkey"
+            columns: ["fvm_id"]
+            isOneToOne: false
+            referencedRelation: "fvms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nao_conformidades_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nao_conformidades_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"

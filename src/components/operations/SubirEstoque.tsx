@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus, Trash2 } from "lucide-react";
@@ -9,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import ImportarPlanilha from "@/components/operations/ImportarPlanilha";
+import FvmForm from "@/components/operations/FvmForm";
 
-type Step = "choose" | "manual" | "importar" | "done";
+type Step = "choose" | "manual" | "fvm" | "importar" | "done";
 
 interface ItemLinha {
   insumoId: string;
@@ -23,6 +25,7 @@ interface ItemLinha {
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, selectedObraId, addEntrada } = useInventory();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("choose");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,8 +111,58 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
       return;
     }
 
+    // Go to FVM step before final registration
+    setStep("fvm");
+  };
+
+  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string) => {
+    if (!selectedObraId || isSubmitting) return;
+    const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
+
     setIsSubmitting(true);
     try {
+      // Create FVM record if answers provided
+      let fvmId: string | undefined;
+      if (fvmAnswers && fvmAnswers.length > 0) {
+        const hasNC = fvmAnswers.some(a => !a.conforme);
+        const { data: fvmData, error: fvmError } = await supabase.from("fvms").insert({
+          obra_id: selectedObraId,
+          nota_fiscal: sharedData.notaFiscal,
+          fornecedor_id: null as any, // optional in new flow
+          date: sharedData.date,
+          quantidade_conferida: true,
+          qualidade_material: !hasNC,
+          documentacao_ok: true,
+          status: hasNC ? "reprovada" : "aprovada",
+          observacoes: observacoesGerais || "",
+          user_id: user?.id || "",
+        }).select("id").single();
+        if (fvmError) throw fvmError;
+        fvmId = fvmData.id;
+
+        // Insert answers
+        const answerRows = fvmAnswers.map(a => ({
+          fvm_id: fvmId!,
+          question_id: a.questionId,
+          conforme: a.conforme,
+          observacao: a.observacao,
+        }));
+        const { error: ansError } = await supabase.from("fvm_answers").insert(answerRows);
+        if (ansError) console.error("Erro ao salvar respostas FVM:", ansError);
+
+        // Create NCs for non-conformities
+        const ncAnswers = fvmAnswers.filter(a => !a.conforme);
+        if (ncAnswers.length > 0) {
+          const ncRows = ncAnswers.map(a => ({
+            fvm_id: fvmId!,
+            obra_id: selectedObraId,
+            description: a.observacao || "Não conformidade detectada na verificação de materiais",
+          }));
+          const { error: ncError } = await supabase.from("nao_conformidades").insert(ncRows);
+          if (ncError) console.error("Erro ao criar NCs:", ncError);
+        }
+      }
+
       for (const item of validItems) {
         const qty = parseFloat(item.quantity);
         const unitVal = parseFloat(item.unitValue);
@@ -121,6 +174,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           validade: item.validade || undefined,
           lote: item.lote || undefined,
           ocItemId: item.ocItemId || undefined,
+          fvmId: fvmId,
         });
 
         // Update OC item delivered quantity
@@ -138,7 +192,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
       }
 
-      toast.success(`${validItems.length} ${validItems.length === 1 ? "entrada registrada" : "entradas registradas"}!`);
+      const ncCount = fvmAnswers?.filter(a => !a.conforme).length || 0;
+      toast.success(`${validItems.length} ${validItems.length === 1 ? "entrada registrada" : "entradas registradas"}${ncCount > 0 ? ` — ${ncCount} NC(s) registrada(s)` : ""}!`);
       setStep("done");
     } catch {
       toast.error("Erro ao registrar entrada");
@@ -165,6 +220,25 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
             Nova Entrada
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (step === "fvm") {
+    return (
+      <div className="animate-fade-in">
+        <button onClick={() => setStep("manual")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="w-4 h-4" /> Voltar ao formulário
+        </button>
+        <h2 className="text-xl font-bold text-foreground mb-4">Verificação de Materiais</h2>
+        <p className="text-sm text-muted-foreground mb-4">NF: <strong>{sharedData.notaFiscal}</strong> — {items.filter(it => it.insumoId).length} item(ns)</p>
+        <div className="max-w-xl">
+          <FvmForm
+            onComplete={(answers, obs) => registerEntradas(answers, obs)}
+            onSkip={() => registerEntradas()}
+          />
+        </div>
+        {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
       </div>
     );
   }

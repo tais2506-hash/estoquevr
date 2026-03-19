@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart, Pencil } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart, Pencil, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,8 +26,10 @@ import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 import KitsCRUD from "@/components/admin/KitsCRUD";
 import OrdensCompra from "@/components/operations/OrdensCompra";
+import FvmConsulta from "@/components/admin/FvmConsulta";
+import NaoConformidades from "@/components/admin/NaoConformidades";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc" | "fvm" | "ncs";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
@@ -36,6 +38,8 @@ const operations = [
   { key: "transferir" as const, label: "Transferir entre Obras", icon: ArrowLeftRight, description: "Mover materiais", color: "text-info", permission: "estoque.transferencia.criar" },
   { key: "emprestimo" as const, label: "Empréstimo entre Obras", icon: HandCoins, description: "Emprestar com devolução", color: "text-amber-600", permission: "estoque.transferencia.criar" },
   { key: "inventario" as const, label: "Inventário / Conferência", icon: ClipboardList, description: "Conferência física", color: "text-primary", permission: "estoque.inventario.criar" },
+  { key: "fvm" as const, label: "FVMs", icon: ClipboardCheck, description: "Fichas de verificação", color: "text-cyan-600", permission: null },
+  { key: "ncs" as const, label: "Não Conformidades", icon: ClipboardCheck, description: "NCs desta obra", color: "text-amber-500", permission: null },
   { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
   { key: "oc" as const, label: "Ordens de Compra", icon: ShoppingCart, description: "Controlar saldo de OC", color: "text-emerald-600", permission: "oc.gerenciar" },
 ];
@@ -223,6 +227,18 @@ const ObraDashboard = () => {
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
       case "kits": return <KitsCRUD obraId={selectedObraId!} onBack={() => setView("menu")} />;
       case "oc": return <OrdensCompra onBack={() => setView("menu")} />;
+      case "fvm": return (
+        <div className="animate-fade-in">
+          <button onClick={() => setView("menu")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="w-4 h-4" /> Voltar ao Menu</button>
+          <FvmConsulta obraId={selectedObraId!} />
+        </div>
+      );
+      case "ncs": return (
+        <div className="animate-fade-in">
+          <button onClick={() => setView("menu")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="w-4 h-4" /> Voltar ao Menu</button>
+          <NaoConformidades obraId={selectedObraId!} />
+        </div>
+      );
       default: return null;
     }
   };
