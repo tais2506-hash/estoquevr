@@ -129,6 +129,7 @@ const AdminDashboard = () => {
           {(isAdmin || hasPermission("admin.usuarios")) && <TabsContent value="usuarios"><UserManagement /></TabsContent>}
           {(isAdmin || hasPermission("admin.perfis")) && <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>}
           {(isAdmin || hasPermission("fvm.gerenciar")) && <TabsContent value="fvm"><FvmTab /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.insumos")) && <TabsContent value="laudos"><LaudosCRUD /></TabsContent>}
           {isAdmin && <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>}
         </Tabs>
       </main>

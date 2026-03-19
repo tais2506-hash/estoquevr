@@ -288,7 +288,25 @@ const InsumosCRUD = () => {
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla consumo?</Label><Switch checked={form.controla_consumo} onCheckedChange={v => setForm({ ...form, controla_consumo: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Controla rastreabilidade?</Label><Switch checked={form.controla_rastreabilidade} onCheckedChange={v => setForm({ ...form, controla_rastreabilidade: v })} /></div>
                   <div className="flex items-center justify-between"><Label className="text-sm">Material não estocável?</Label><Switch checked={form.material_nao_estocavel} onCheckedChange={v => setForm({ ...form, material_nao_estocavel: v })} /></div>
-                  
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-foreground">Controle de Laudo</p>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Tipo de laudo</Label>
+                    <Select value={form.tipo_laudo} onValueChange={v => setForm({ ...form, tipo_laudo: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nao_controlado">Não controlado (sem laudo)</SelectItem>
+                        <SelectItem value="global">Laudo global (válido para todas as obras)</SelectItem>
+                        <SelectItem value="por_lote">Laudo por lote/NF (inserido na FVM)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {form.tipo_laudo === "global" && "O laudo será cadastrado uma vez e validará o insumo em todas as obras."}
+                      {form.tipo_laudo === "por_lote" && "O laudo deverá ser anexado durante a FVM, vinculado ao lote/NF da entrada."}
+                      {form.tipo_laudo === "nao_controlado" && "Este insumo não requer laudo de qualidade."}
+                    </p>
+                  </div>
                 </div>
                 <Button onClick={handleSave} className="w-full">{editing ? "Salvar" : "Cadastrar"}</Button>
               </div>
