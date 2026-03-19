@@ -13,6 +13,8 @@ interface ItemLinha {
   insumoId: string;
   quantity: string;
   lote: string;
+  locationId: string;
+  localAplicacao: string;
 }
 
 const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
