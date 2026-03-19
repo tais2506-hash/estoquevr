@@ -98,8 +98,8 @@ const LaudosCRUD = () => {
   });
 
   const handleUpload = async () => {
-    if (!form.insumoId || !form.file) {
-      toast.error("Selecione o insumo e o arquivo do laudo");
+    if (!form.insumoId || !form.fornecedorId || !form.file) {
+      toast.error("Selecione o insumo, o fornecedor e o arquivo do laudo");
       return;
     }
     setUploading(true);
