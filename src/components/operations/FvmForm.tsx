@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useInventory } from "@/contexts/InventoryContext";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CheckCircle2, XCircle, FileText, Upload, Eye, AlertTriangle, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface FvmAnswer {
   questionId: string;
@@ -14,12 +19,18 @@ interface FvmAnswer {
 }
 
 interface FvmFormProps {
-  onComplete: (answers: FvmAnswer[], observacoesGerais: string) => void;
+  onComplete: (answers: FvmAnswer[], observacoesGerais: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => void;
   onSkip: () => void;
+  insumoIds?: string[];
+  notaFiscal?: string;
 }
 
-const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
+const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFormProps) => {
   const [observacoesGerais, setObservacoesGerais] = useState("");
+  const { insumos } = useInventory();
+  const { user } = useAuth();
+  const [viewingLaudo, setViewingLaudo] = useState<any>(null);
+  const [laudosPorLote, setLaudosPorLote] = useState<Record<string, File>>({});
 
   const { data: questions = [], isLoading } = useQuery({
     queryKey: ["fvm_questions_active"],
@@ -32,6 +43,22 @@ const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Fetch laudos for the insumos in this entry
+  const { data: laudos = [] } = useQuery({
+    queryKey: ["laudos_for_fvm", insumoIds],
+    queryFn: async () => {
+      if (insumoIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("laudos")
+        .select("*")
+        .in("insumo_id", insumoIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: insumoIds.length > 0,
   });
 
   const [answers, setAnswers] = useState<Record<string, { conforme: boolean; observacao: string }>>({});
@@ -47,13 +74,38 @@ const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
   const allAnswered = questions.every(q => answers[q.id] !== undefined);
   const hasNonConformities = Object.values(answers).some(a => !a.conforme);
 
+  // Insumos that require per-lote laudo
+  const insumosPerLote = insumoIds
+    .map(id => insumos.find(i => i.id === id))
+    .filter(i => i && (i as any).tipo_laudo === "por_lote");
+
+  // Check per-lote laudos are provided
+  const allPerLoteLaudosProvided = insumosPerLote.every(i => laudosPorLote[i!.id]);
+
+  const getLaudoStatus = (laudo: any) => {
+    if (!laudo.validade) return null;
+    const today = new Date();
+    const val = new Date(laudo.validade + "T00:00:00");
+    const diffDays = Math.ceil((val.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "vencido";
+    if (diffDays <= 15) return "proximo";
+    return "valido";
+  };
+
   const handleSubmit = () => {
     const result: FvmAnswer[] = questions.map(q => ({
       questionId: q.id,
       conforme: answers[q.id]?.conforme ?? true,
       observacao: answers[q.id]?.observacao || "",
     }));
-    onComplete(result, observacoesGerais);
+
+    const laudoFiles = Object.entries(laudosPorLote).map(([insumoId, file]) => ({
+      insumoId,
+      file,
+      notaFiscal,
+    }));
+
+    onComplete(result, observacoesGerais, laudoFiles.length > 0 ? laudoFiles : undefined);
   };
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando perguntas FVM...</p>;
@@ -67,6 +119,13 @@ const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
     );
   }
 
+  // Group laudos by insumo
+  const laudosByInsumo: Record<string, any[]> = {};
+  laudos.forEach((l: any) => {
+    if (!laudosByInsumo[l.insumo_id]) laudosByInsumo[l.insumo_id] = [];
+    laudosByInsumo[l.insumo_id].push(l);
+  });
+
   return (
     <div className="space-y-4 p-4 rounded-xl border-2 border-primary/20 bg-primary/5">
       <div className="flex items-center justify-between">
@@ -76,6 +135,87 @@ const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
         )}
       </div>
 
+      {/* Laudos section */}
+      {insumoIds.length > 0 && (
+        <div className="space-y-2 p-3 rounded-lg border border-border bg-card">
+          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <FileText className="w-3.5 h-3.5" /> Laudos dos Insumos
+          </p>
+          {insumoIds.map(id => {
+            const insumo = insumos.find(i => i.id === id);
+            if (!insumo) return null;
+            const tipoLaudo = (insumo as any).tipo_laudo || "nao_controlado";
+            const insLaudos = laudosByInsumo[id] || [];
+
+            if (tipoLaudo === "nao_controlado") {
+              return (
+                <div key={id} className="flex items-center justify-between py-1">
+                  <span className="text-sm">{insumo.name}</span>
+                  <Badge variant="outline" className="text-xs">Sem controle de laudo</Badge>
+                </div>
+              );
+            }
+
+            if (tipoLaudo === "global") {
+              const latestLaudo = insLaudos[0];
+              const status = latestLaudo ? getLaudoStatus(latestLaudo) : null;
+              return (
+                <div key={id} className="flex items-center justify-between py-1 gap-2">
+                  <span className="text-sm flex-1">{insumo.name}</span>
+                  {latestLaudo ? (
+                    <div className="flex items-center gap-1">
+                      {status === "vencido" && <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1" />Vencido</Badge>}
+                      {status === "proximo" && <Badge className="text-xs bg-amber-500/15 text-amber-600 border-amber-500/30"><Clock className="w-3 h-3 mr-1" />Vence em breve</Badge>}
+                      {status === "valido" && <Badge className="text-xs bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Válido</Badge>}
+                      {status === null && <Badge variant="outline" className="text-xs">Sem validade</Badge>}
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setViewingLaudo(latestLaudo)}>
+                        <Eye className="w-3 h-3 mr-1" />Ver Laudo
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1" />Sem laudo cadastrado</Badge>
+                  )}
+                </div>
+              );
+            }
+
+            if (tipoLaudo === "por_lote") {
+              return (
+                <div key={id} className="flex items-center justify-between py-1 gap-2">
+                  <span className="text-sm flex-1">{insumo.name}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">Laudo por lote/NF</Badge>
+                    {laudosPorLote[id] ? (
+                      <Badge className="text-xs bg-emerald-500/15 text-emerald-600 border-emerald-500/30">
+                        {laudosPorLote[id].name}
+                      </Badge>
+                    ) : (
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) setLaudosPorLote(prev => ({ ...prev, [id]: file }));
+                          }}
+                        />
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+                          <Upload className="w-3 h-3" />Anexar Laudo
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      )}
+
+      {/* Questions */}
       <div className="space-y-3">
         {questions.map((q, idx) => {
           const ans = answers[q.id];
@@ -135,6 +275,35 @@ const FvmForm = ({ onComplete, onSkip }: FvmFormProps) => {
           Pular
         </Button>
       </div>
+
+      {/* Laudo Viewer Dialog */}
+      <Dialog open={!!viewingLaudo} onOpenChange={open => !open && setViewingLaudo(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Visualizar Laudo</DialogTitle>
+          </DialogHeader>
+          {viewingLaudo && (
+            <div className="space-y-3">
+              <div className="flex gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">{viewingLaudo.file_name}</Badge>
+                {viewingLaudo.validade && (
+                  <Badge variant="outline" className="text-xs">
+                    Validade: {new Date(viewingLaudo.validade + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </Badge>
+                )}
+              </div>
+              {viewingLaudo.file_url?.toLowerCase().endsWith(".pdf") || viewingLaudo.file_name?.toLowerCase().endsWith(".pdf") ? (
+                <iframe src={viewingLaudo.file_url} className="w-full h-[60vh]" title="Laudo" />
+              ) : (
+                <img src={viewingLaudo.file_url} alt="Laudo" className="max-w-full max-h-[60vh] object-contain rounded-lg mx-auto" />
+              )}
+              <a href={viewingLaudo.file_url} download={viewingLaudo.file_name} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="w-full">Baixar Laudo</Button>
+              </a>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
