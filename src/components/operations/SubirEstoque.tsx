@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useInventory } from "@/contexts/InventoryContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, ArrowUp, FileSpreadsheet, Plus, Trash2 } from "lucide-react";
@@ -9,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import ImportarPlanilha from "@/components/operations/ImportarPlanilha";
+import FvmForm from "@/components/operations/FvmForm";
 
-type Step = "choose" | "manual" | "importar" | "done";
+type Step = "choose" | "manual" | "fvm" | "importar" | "done";
 
 interface ItemLinha {
   insumoId: string;
