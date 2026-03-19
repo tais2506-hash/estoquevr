@@ -241,6 +241,7 @@ const ObraDashboard = () => {
           <NaoConformidades obraId={selectedObraId!} />
         </div>
       );
+      case "laudos": return <LaudosObra obraId={selectedObraId!} onBack={() => setView("menu")} />;
       default: return null;
     }
   };
