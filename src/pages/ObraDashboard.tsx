@@ -28,8 +28,9 @@ import KitsCRUD from "@/components/admin/KitsCRUD";
 import OrdensCompra from "@/components/operations/OrdensCompra";
 import FvmConsulta from "@/components/admin/FvmConsulta";
 import NaoConformidades from "@/components/admin/NaoConformidades";
+import LaudosObra from "@/components/operations/LaudosObra";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc" | "fvm" | "ncs";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc" | "fvm" | "ncs" | "laudos";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
