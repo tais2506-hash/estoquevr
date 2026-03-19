@@ -361,7 +361,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
                     <SearchableSelect
                       options={getInsumoOptionsFiltered(item.insumoId)}
                       value={item.insumoId}
-                      onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                      onValueChange={v => { updateItemLine(idx, "insumoId", v); updateItemLine(idx, "fabricanteId", ""); }}
                       placeholder="Selecione o insumo"
                       searchPlaceholder="Buscar por nome ou código..."
                       emptyMessage="Nenhum insumo encontrado."
