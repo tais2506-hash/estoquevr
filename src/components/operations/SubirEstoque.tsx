@@ -25,6 +25,7 @@ interface ItemLinha {
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const { insumos, selectedObraId, addEntrada } = useInventory();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("choose");
   const [isSubmitting, setIsSubmitting] = useState(false);
