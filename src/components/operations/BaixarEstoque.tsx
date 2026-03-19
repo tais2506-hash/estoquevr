@@ -134,22 +134,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
     setIsSubmitting(true);
     try {
+      let totalSaidas = 0;
       for (const item of validItems) {
-        const localAplicacao = (retroativo && semLocal)
-          ? "Sem histórico de local" + retroLabel
-          : item.locationId
-            ? getLocationPath(item.locationId) + retroLabel
-            : (item.localAplicacao || "Não especificado") + retroLabel;
+        const effectiveLocationIds = item.locationIds.length > 0 ? item.locationIds : (item.locationId ? [item.locationId] : [""]);
+        for (const locId of effectiveLocationIds) {
+          const localAplicacao = (retroativo && semLocal)
+            ? "Sem histórico de local" + retroLabel
+            : locId
+              ? getLocationPath(locId) + retroLabel
+              : (item.localAplicacao || "Não especificado") + retroLabel;
 
-        await addSaida({
-          obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
-          date: dateToUse, localAplicacao, responsavel: formData.responsavel,
-          locationId: (retroativo && semLocal) ? undefined : (item.locationId || undefined),
-          servicePackageId: formData.servicePackageId || undefined,
-          lote: item.lote || undefined,
-        });
+          await addSaida({
+            obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
+            date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+            locationId: (retroativo && semLocal) ? undefined : (locId || undefined),
+            servicePackageId: formData.servicePackageId || undefined,
+            lote: item.lote || undefined,
+          });
+          totalSaidas++;
+        }
       }
-      toast.success(`${validItems.length} ${validItems.length === 1 ? "saída registrada" : "saídas registradas"}!`);
+      toast.success(`${totalSaidas} ${totalSaidas === 1 ? "saída registrada" : "saídas registradas"}!`);
       setDone(true);
     } catch {
       toast.error("Erro ao registrar saída");
