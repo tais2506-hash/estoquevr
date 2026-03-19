@@ -162,7 +162,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
             if (tipoLaudo === "nao_controlado") {
               return (
                 <div key={id} className="flex items-center justify-between py-1">
-                  <span className="text-sm">{insumo.name}</span>
+                  <span className="text-sm">{displayName}</span>
                   <Badge variant="outline" className="text-xs">Sem controle de laudo</Badge>
                 </div>
               );
