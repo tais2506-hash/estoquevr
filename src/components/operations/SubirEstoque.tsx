@@ -21,6 +21,7 @@ interface ItemLinha {
   lote: string;
   validade: string;
   ocItemId: string;
+  fabricanteId: string;
 }
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
