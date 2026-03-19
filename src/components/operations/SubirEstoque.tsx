@@ -350,6 +350,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           {items.map((item, idx) => {
             const totalItem = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitValue) || 0);
             const ocOpts = getOcItemOptions(item.insumoId);
+            const fabOpts = getFabricanteOptions(item.insumoId);
+            const showFabricante = insumoNeedsLaudo(item.insumoId) && fabOpts.length > 0;
 
             return (
               <div key={idx} className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
