@@ -17,6 +17,7 @@ import DashboardKits from "@/components/dashboard/DashboardKits";
 import ReportsPage from "@/components/reports/ReportsPage";
 import PermissionProfilesCRUD from "@/components/admin/PermissionProfilesCRUD";
 import ConfiguracoesCRUD from "@/components/admin/ConfiguracoesCRUD";
+import FvmTab from "@/components/admin/FvmTab";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
