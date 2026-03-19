@@ -115,6 +115,7 @@ const LaudosCRUD = () => {
 
       const { error } = await supabase.from("laudos").insert({
         insumo_id: form.insumoId,
+        fornecedor_id: form.fornecedorId,
         file_url: urlData.publicUrl,
         file_name: form.file.name,
         validade: form.validade || null,
@@ -127,7 +128,7 @@ const LaudosCRUD = () => {
       toast.success("Laudo cadastrado com sucesso");
       queryClient.invalidateQueries({ queryKey: ["laudos"] });
       setDialogOpen(false);
-      setForm({ insumoId: "", validade: "", lote: "", notaFiscal: "", file: null });
+      setForm({ insumoId: "", fornecedorId: "", validade: "", lote: "", notaFiscal: "", file: null });
     } catch (err: any) {
       toast.error(err.message || "Erro ao cadastrar laudo");
     } finally {
