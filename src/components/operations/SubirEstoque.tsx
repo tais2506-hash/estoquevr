@@ -32,7 +32,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "", fabricanteId: "" }]);
 
   // Shared fields
   const [sharedData, setSharedData] = useState({
