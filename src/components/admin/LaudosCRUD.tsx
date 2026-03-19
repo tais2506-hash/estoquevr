@@ -275,10 +275,11 @@ const LaudosCRUD = () => {
             <tbody>
               {filtered.map((l: any) => {
                 const insumo = insumos.find(i => i.id === l.insumo_id);
+                const fornecedor = fornecedores.find(f => f.id === l.fornecedor_id);
                 return (
                   <tr key={l.id} className="border-b border-border/50 last:border-0">
                     <td className="p-3 font-medium text-foreground">{insumo?.name || "—"}</td>
-                    <td className="p-3 text-muted-foreground hidden md:table-cell text-xs">{l.file_name}</td>
+                    <td className="p-3 text-muted-foreground text-xs">{fornecedor?.name || "—"}</td>
                     <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">
                       {l.lote && <span className="mr-2">Lote: {l.lote}</span>}
                       {l.nota_fiscal && <span>NF: {l.nota_fiscal}</span>}
