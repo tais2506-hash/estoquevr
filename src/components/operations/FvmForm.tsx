@@ -42,9 +42,9 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
     },
   });
 
-  // Fetch laudos for the insumos in this entry
+  // Fetch laudos for the insumos in this entry, filtered by fabricante when available
   const { data: laudos = [] } = useQuery({
-    queryKey: ["laudos_for_fvm", insumoIds],
+    queryKey: ["laudos_for_fvm", insumoIds, fabricanteByInsumo],
     queryFn: async () => {
       if (insumoIds.length === 0) return [];
       const { data, error } = await supabase
@@ -53,9 +53,24 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
         .in("insumo_id", insumoIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // Filter by fabricante when mapping is provided
+      return (data || []).filter((l: any) => {
+        const fabId = fabricanteByInsumo[l.insumo_id];
+        if (!fabId) return true; // no fabricante selected, show all
+        return l.fabricante_id === fabId;
+      });
     },
     enabled: insumoIds.length > 0,
+  });
+
+  // Fetch fabricantes for display
+  const { data: allFabricantes = [] } = useQuery({
+    queryKey: ["fabricantes_fvm"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fabricantes").select("id, name").is("deleted_at", null);
+      if (error) throw error;
+      return data;
+    },
   });
 
   const [answers, setAnswers] = useState<Record<string, { conforme: boolean; observacao: string }>>({});
