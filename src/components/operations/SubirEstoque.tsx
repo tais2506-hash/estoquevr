@@ -111,8 +111,58 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
       return;
     }
 
+    // Go to FVM step before final registration
+    setStep("fvm");
+  };
+
+  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string) => {
+    if (!selectedObraId || isSubmitting) return;
+    const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
+
     setIsSubmitting(true);
     try {
+      // Create FVM record if answers provided
+      let fvmId: string | undefined;
+      if (fvmAnswers && fvmAnswers.length > 0) {
+        const hasNC = fvmAnswers.some(a => !a.conforme);
+        const { data: fvmData, error: fvmError } = await supabase.from("fvms").insert({
+          obra_id: selectedObraId,
+          nota_fiscal: sharedData.notaFiscal,
+          fornecedor_id: null as any, // optional in new flow
+          date: sharedData.date,
+          quantidade_conferida: true,
+          qualidade_material: !hasNC,
+          documentacao_ok: true,
+          status: hasNC ? "reprovada" : "aprovada",
+          observacoes: observacoesGerais || "",
+          user_id: user?.id || "",
+        }).select("id").single();
+        if (fvmError) throw fvmError;
+        fvmId = fvmData.id;
+
+        // Insert answers
+        const answerRows = fvmAnswers.map(a => ({
+          fvm_id: fvmId!,
+          question_id: a.questionId,
+          conforme: a.conforme,
+          observacao: a.observacao,
+        }));
+        const { error: ansError } = await supabase.from("fvm_answers").insert(answerRows);
+        if (ansError) console.error("Erro ao salvar respostas FVM:", ansError);
+
+        // Create NCs for non-conformities
+        const ncAnswers = fvmAnswers.filter(a => !a.conforme);
+        if (ncAnswers.length > 0) {
+          const ncRows = ncAnswers.map(a => ({
+            fvm_id: fvmId!,
+            obra_id: selectedObraId,
+            description: a.observacao || "Não conformidade detectada na verificação de materiais",
+          }));
+          const { error: ncError } = await supabase.from("nao_conformidades").insert(ncRows);
+          if (ncError) console.error("Erro ao criar NCs:", ncError);
+        }
+      }
+
       for (const item of validItems) {
         const qty = parseFloat(item.quantity);
         const unitVal = parseFloat(item.unitValue);
@@ -124,6 +174,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           validade: item.validade || undefined,
           lote: item.lote || undefined,
           ocItemId: item.ocItemId || undefined,
+          fvmId: fvmId,
         });
 
         // Update OC item delivered quantity
@@ -141,7 +192,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         queryClient.invalidateQueries({ queryKey: ["ordens_compra"] });
       }
 
-      toast.success(`${validItems.length} ${validItems.length === 1 ? "entrada registrada" : "entradas registradas"}!`);
+      const ncCount = fvmAnswers?.filter(a => !a.conforme).length || 0;
+      toast.success(`${validItems.length} ${validItems.length === 1 ? "entrada registrada" : "entradas registradas"}${ncCount > 0 ? ` — ${ncCount} NC(s) registrada(s)` : ""}!`);
       setStep("done");
     } catch {
       toast.error("Erro ao registrar entrada");
