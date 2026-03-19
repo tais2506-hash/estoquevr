@@ -4,13 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useInventory } from "@/contexts/InventoryContext";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, XCircle, FileText, Upload, Eye, AlertTriangle, Clock } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
 
 interface FvmAnswer {
   questionId: string;
