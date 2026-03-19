@@ -70,10 +70,6 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
   const allAnswered = questions.every(q => answers[q.id] !== undefined);
   const hasNonConformities = Object.values(answers).some(a => !a.conforme);
 
-  // Insumos that require per-lote laudo
-  const insumosPerLote = insumoIds
-    .map(id => insumos.find(i => i.id === id))
-    .filter(i => i && (i as any).tipo_laudo === "por_lote");
 
   // Check per-lote laudos are provided
   
