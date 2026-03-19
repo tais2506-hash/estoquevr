@@ -77,10 +77,17 @@ const LaudosCRUD = () => {
     return "valido";
   };
 
+  const fornecedorOptions = useMemo(() =>
+    fornecedores.map(f => ({ value: f.id, label: `${f.name} (${f.cnpj})` })),
+    [fornecedores]
+  );
+
   const filtered = laudos.filter((l: any) => {
     const insumo = insumos.find(i => i.id === l.insumo_id);
+    const fornecedor = fornecedores.find(f => f.id === l.fornecedor_id);
     const matchSearch = !search || 
       insumo?.name.toLowerCase().includes(search.toLowerCase()) ||
+      fornecedor?.name.toLowerCase().includes(search.toLowerCase()) ||
       l.file_name?.toLowerCase().includes(search.toLowerCase()) ||
       l.lote?.toLowerCase().includes(search.toLowerCase()) ||
       l.nota_fiscal?.toLowerCase().includes(search.toLowerCase());
