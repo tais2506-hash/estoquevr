@@ -226,11 +226,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
-  // Check if any selected insumo requires location
-  const anyRequiresLocation = items.some(it => {
-    const ins = insumos.find(i => i.id === it.insumoId);
-    return ins?.controla_rastreabilidade;
-  });
 
   return (
     <div className="animate-fade-in">
