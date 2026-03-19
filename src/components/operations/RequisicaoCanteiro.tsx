@@ -58,7 +58,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", locationId: "", locationIds: [], localAplicacao: "" }]);
   const [formData, setFormData] = useState({
     kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
