@@ -194,7 +194,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
             if (tipoLaudo === "por_lote") {
               return (
                 <div key={id} className="flex items-center justify-between py-1 gap-2">
-                  <span className="text-sm flex-1">{insumo.name}</span>
+                  <span className="text-sm flex-1">{displayName}</span>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">Laudo por lote/NF</Badge>
                     {laudosPorLote[id] ? (
