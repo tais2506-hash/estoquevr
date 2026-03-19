@@ -259,7 +259,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   }, [userId, user]);
 
-  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string; ocItemId?: string }) => {
+  const addEntrada = useCallback(async (data: { obraId: string; insumoId: string; notaFiscal: string; quantity: number; unitValue: number; totalValue: number; date: string; validade?: string; lote?: string; ocItemId?: string; fvmId?: string }) => {
     if (!userId) return;
     const insumo = insumos.find(i => i.id === data.insumoId);
 
@@ -272,6 +272,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       validade: data.validade || null,
       lote: data.lote || null,
       oc_item_id: data.ocItemId || null,
+      fvm_id: data.fvmId || null,
     } as any).select().single();
     if (error) throw error;
 
