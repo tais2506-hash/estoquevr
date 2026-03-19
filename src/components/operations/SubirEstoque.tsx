@@ -146,7 +146,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     setStep("fvm");
   };
 
-  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => {
+  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string; fabricanteId?: string }[]) => {
     if (!selectedObraId || isSubmitting) return;
     const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
 
