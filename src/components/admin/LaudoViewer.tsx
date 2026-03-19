@@ -50,7 +50,7 @@ const LaudoViewer = ({ laudo, onBack }: LaudoViewerProps) => {
 
       <div className="bg-card rounded-xl border border-border p-4 space-y-2">
         <h3 className="font-semibold text-foreground">{insumo?.name || "Insumo"}</h3>
-        {fornecedor && <p className="text-sm text-muted-foreground">Fornecedor: {fornecedor.name}</p>}
+        {fabricante && <p className="text-sm text-muted-foreground">Fabricante: {fabricante.name}</p>}
         <p className="text-sm text-muted-foreground">Arquivo: {laudo.file_name}</p>
         <div className="flex gap-2 flex-wrap">
           {laudo.lote && <Badge variant="outline" className="text-xs">Lote: {laudo.lote}</Badge>}
