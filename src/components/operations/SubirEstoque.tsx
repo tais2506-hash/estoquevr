@@ -64,6 +64,25 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     enabled: ordensCompra.length > 0,
   });
 
+  // Fetch fabricantes and insumo_fabricantes links
+  const { data: allFabricantes = [] } = useQuery({
+    queryKey: ["fabricantes_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fabricantes").select("*").is("deleted_at", null).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: insumoFabricantes = [] } = useQuery({
+    queryKey: ["insumo_fabricantes_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("insumo_fabricantes").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const insumoOptions = useMemo(() =>
     insumos.map(i => ({
       value: i.id,
@@ -74,6 +93,17 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   );
 
   const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+
+  const getFabricanteOptions = (insumoId: string) => {
+    if (!insumoId) return [];
+    const linkedIds = insumoFabricantes.filter(lnk => lnk.insumo_id === insumoId).map(lnk => lnk.fabricante_id);
+    return allFabricantes.filter(f => linkedIds.includes(f.id)).map(f => ({ value: f.id, label: f.name }));
+  };
+
+  const insumoNeedsLaudo = (insumoId: string) => {
+    const insumo = insumos.find(i => i.id === insumoId);
+    return insumo && (insumo as any).tipo_laudo && (insumo as any).tipo_laudo !== "nao_controlado";
+  };
 
   const getInsumoOptionsFiltered = (currentInsumoId: string) =>
     insumoOptions.filter(o => !usedInsumoIds.includes(o.value) || o.value === currentInsumoId);
