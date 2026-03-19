@@ -857,6 +857,7 @@ export type Database = {
           created_by: string
           file_name: string
           file_url: string
+          fornecedor_id: string | null
           fvm_id: string | null
           id: string
           insumo_id: string
@@ -871,6 +872,7 @@ export type Database = {
           created_by: string
           file_name: string
           file_url: string
+          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id: string
@@ -885,6 +887,7 @@ export type Database = {
           created_by?: string
           file_name?: string
           file_url?: string
+          fornecedor_id?: string | null
           fvm_id?: string | null
           id?: string
           insumo_id?: string
@@ -895,6 +898,13 @@ export type Database = {
           validade?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "laudos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "laudos_fvm_id_fkey"
             columns: ["fvm_id"]

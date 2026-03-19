@@ -1,0 +1,1 @@
+ALTER TABLE public.laudos ADD COLUMN fornecedor_id uuid REFERENCES public.fornecedores(id);
