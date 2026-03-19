@@ -204,6 +204,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
           await supabase.from("laudos").insert({
             insumo_id: laudoFile.insumoId,
+            fabricante_id: laudoFile.fabricanteId || null,
             file_url: urlData.publicUrl,
             file_name: laudoFile.file.name,
             nota_fiscal: laudoFile.notaFiscal || sharedData.notaFiscal,
