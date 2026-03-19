@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Wand2, Plus, Trash2, Eye } from "lucide-react";
+import { Wand2, Plus, Eye, FolderTree } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// ---- Types ----
 
 interface Obra {
   id: string;
@@ -19,15 +22,31 @@ interface Obra {
 
 interface LevelConfig {
   enabled: boolean;
+  type: string; // location_type value (torre, pavimento, etc.)
   prefix: string;
-  items: string; // comma-separated or range like "1-10"
+  items: string;
 }
+
+interface TreeNode {
+  name: string;
+  type: string;
+  parentPath: string[];
+}
+
+interface ExistingLocation {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  type: string;
+  obra_id: string;
+}
+
+// ---- Helpers ----
 
 const parseLevelItems = (input: string): string[] => {
   const trimmed = input.trim();
   if (!trimmed) return [];
 
-  // Check if range like "1-10" or "01-20"
   const rangeMatch = trimmed.match(/^(\d+)\s*-\s*(\d+)$/);
   if (rangeMatch) {
     const start = parseInt(rangeMatch[1]);
@@ -42,9 +61,86 @@ const parseLevelItems = (input: string): string[] => {
     }
   }
 
-  // Comma-separated: "A, B, C" or "Torre 1, Torre 2"
   return trimmed.split(",").map(s => s.trim()).filter(Boolean);
 };
+
+const getLocationPath = (loc: ExistingLocation, allLocs: ExistingLocation[]): string => {
+  const parts: string[] = [loc.name];
+  let current = loc;
+  while (current.parent_id) {
+    const parent = allLocs.find(l => l.id === current.parent_id);
+    if (!parent) break;
+    parts.unshift(parent.name);
+    current = parent;
+  }
+  return parts.join(" > ");
+};
+
+// ---- LevelRow (extracted outside to avoid focus loss) ----
+
+interface LevelRowProps {
+  label: string;
+  config: LevelConfig;
+  onChange: (c: LevelConfig) => void;
+  placeholderItems: string;
+  locationTypes: { id: string; name: string }[];
+}
+
+const LevelRow = ({ label, config, onChange, placeholderItems, locationTypes }: LevelRowProps) => (
+  <div className={`rounded-lg border p-3 space-y-2 transition-opacity ${config.enabled ? "border-primary/30 bg-primary/5" : "border-border opacity-60"}`}>
+    <div className="flex items-center gap-2">
+      <Checkbox
+        checked={config.enabled}
+        onCheckedChange={(v) => onChange({ ...config, enabled: !!v })}
+      />
+      <Label className="font-medium text-sm">{label}</Label>
+    </div>
+    {config.enabled && (
+      <div className="space-y-2 pl-6">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Tipo do local</Label>
+            <Select value={config.type} onValueChange={(v) => onChange({ ...config, type: v })}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                {locationTypes.map(lt => (
+                  <SelectItem key={lt.id} value={lt.name.toLowerCase()}>
+                    {lt.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Prefixo (opcional)</Label>
+            <Input
+              value={config.prefix}
+              onChange={e => onChange({ ...config, prefix: e.target.value })}
+              placeholder="Ex: Torre "
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Itens</Label>
+          <Input
+            value={config.items}
+            onChange={e => onChange({ ...config, items: e.target.value })}
+            placeholder={placeholderItems}
+            className="h-8 text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Use intervalo (ex: 01-10) ou lista separada por vírgula (ex: A, B, C)
+          </p>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+// ---- Main Component ----
 
 interface BulkLocationGeneratorProps {
   obras: Obra[];
@@ -56,59 +152,82 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
   const [generating, setGenerating] = useState(false);
   const [obraId, setObraId] = useState("");
   const [preview, setPreview] = useState<string[] | null>(null);
+  const [parentLocationId, setParentLocationId] = useState<string>("");
 
-  const [torre, setTorre] = useState<LevelConfig>({ enabled: true, prefix: "Torre ", items: "A, B, C" });
-  const [pavimento, setPavimento] = useState<LevelConfig>({ enabled: true, prefix: "", items: "01-10" });
-  const [unidade, setUnidade] = useState<LevelConfig>({ enabled: true, prefix: "", items: "01-04" });
-  const [ambiente, setAmbiente] = useState<LevelConfig>({ enabled: false, prefix: "", items: "Sala, Cozinha, Banheiro" });
+  // Fetch location_types from DB
+  const { data: locationTypes = [] } = useQuery({
+    queryKey: ["location_types"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("location_types")
+        .select("id, name, sort_order")
+        .order("sort_order");
+      return data || [];
+    },
+  });
+
+  // Fetch existing locations for selected obra (for parent selection)
+  const { data: existingLocations = [] } = useQuery({
+    queryKey: ["locations", obraId],
+    queryFn: async () => {
+      if (!obraId) return [];
+      const { data } = await supabase
+        .from("locations")
+        .select("id, name, parent_id, type, obra_id")
+        .eq("obra_id", obraId)
+        .is("deleted_at", null)
+        .order("name");
+      return (data || []) as ExistingLocation[];
+    },
+    enabled: !!obraId,
+  });
+
+  const [levels, setLevels] = useState<LevelConfig[]>([
+    { enabled: true, type: "torre", prefix: "Torre ", items: "A, B, C" },
+    { enabled: true, type: "pavimento", prefix: "", items: "01-10" },
+    { enabled: true, type: "unidade", prefix: "", items: "01-04" },
+    { enabled: false, type: "ambiente", prefix: "", items: "Sala, Cozinha, Banheiro" },
+  ]);
 
   const activeObras = obras.filter(o => o.status !== "arquivada");
 
-  const buildTree = (): { name: string; type: string; parentPath: string[] }[] => {
-    const result: { name: string; type: string; parentPath: string[] }[] = [];
+  const updateLevel = useCallback((index: number, config: LevelConfig) => {
+    setLevels(prev => {
+      const next = [...prev];
+      next[index] = config;
+      return next;
+    });
+  }, []);
 
-    const torreItems = torre.enabled ? parseLevelItems(torre.items) : [];
-    const pavItems = pavimento.enabled ? parseLevelItems(pavimento.items) : [];
-    const uniItems = unidade.enabled ? parseLevelItems(unidade.items) : [];
-    const ambItems = ambiente.enabled ? parseLevelItems(ambiente.items) : [];
+  // Parent location options (flat list with path)
+  const parentLocationOptions = existingLocations.map(loc => ({
+    value: loc.id,
+    label: getLocationPath(loc, existingLocations),
+  }));
 
-    if (torreItems.length === 0 && pavItems.length === 0 && uniItems.length === 0 && ambItems.length === 0) return result;
+  const buildTree = useCallback((): TreeNode[] => {
+    const result: TreeNode[] = [];
+    const enabledLevels = levels.filter(l => l.enabled && parseLevelItems(l.items).length > 0);
 
-    // If no torres, start from next available level
-    const torresOrRoot = torreItems.length > 0 ? torreItems : [""];
+    if (enabledLevels.length === 0) return result;
 
-    for (const t of torresOrRoot) {
-      const torreName = t ? `${torre.prefix}${t}` : "";
-      if (torreName) {
-        result.push({ name: torreName, type: "torre", parentPath: [] });
+    // Build tree recursively
+    const buildLevel = (levelIndex: number, parentPath: string[]) => {
+      if (levelIndex >= enabledLevels.length) return;
+
+      const level = enabledLevels[levelIndex];
+      const items = parseLevelItems(level.items);
+
+      for (const item of items) {
+        const name = `${level.prefix}${item}`;
+        result.push({ name, type: level.type, parentPath: [...parentPath] });
+        buildLevel(levelIndex + 1, [...parentPath, name]);
       }
+    };
 
-      const pavOrRoot = pavItems.length > 0 ? pavItems : [""];
-      for (const p of pavOrRoot) {
-        const pavName = p ? `${pavimento.prefix}${p}` : "";
-        if (pavName) {
-          result.push({ name: pavName, type: "pavimento", parentPath: torreName ? [torreName] : [] });
-        }
-
-        const uniOrRoot = uniItems.length > 0 ? uniItems : [""];
-        for (const u of uniOrRoot) {
-          const uniName = u ? `${unidade.prefix}${u}` : "";
-          if (uniName) {
-            const path = [torreName, pavName].filter(Boolean);
-            result.push({ name: uniName, type: "unidade", parentPath: path });
-          }
-
-          for (const a of ambItems) {
-            const ambName = `${ambiente.prefix}${a}`;
-            const path = [torreName, pavName, uniName].filter(Boolean);
-            result.push({ name: ambName, type: "ambiente", parentPath: path });
-          }
-        }
-      }
-    }
-
+    buildLevel(0, []);
     return result;
-  };
+  }, [levels]);
 
   const handlePreview = () => {
     const tree = buildTree();
@@ -120,9 +239,19 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
       toast.error(`Seriam gerados ${tree.length} locais. Reduza os intervalos (máximo: 5000).`);
       return;
     }
+
+    // Add parent location path as prefix if selected
+    let parentPrefix = "";
+    if (parentLocationId) {
+      const parentLoc = existingLocations.find(l => l.id === parentLocationId);
+      if (parentLoc) {
+        parentPrefix = getLocationPath(parentLoc, existingLocations) + " > ";
+      }
+    }
+
     setPreview(tree.map(n => {
       const full = [...n.parentPath, n.name].join(" > ");
-      return full;
+      return parentPrefix + full;
     }));
   };
 
@@ -135,26 +264,27 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
 
     setGenerating(true);
     try {
-      // Fetch existing locations to avoid duplicates
-      const { data: existingLocs } = await supabase
+      // Fetch fresh existing locations
+      const { data: freshLocs } = await supabase
         .from("locations")
         .select("id, name, obra_id, parent_id, type")
         .eq("obra_id", obraId)
         .is("deleted_at", null);
 
+      const allLocs = freshLocs || [];
+
       const existingSet = new Set(
-        (existingLocs || []).map(l => `${l.name}|${l.parent_id || "null"}|${l.type}`)
+        allLocs.map(l => `${l.name}|${l.parent_id || "null"}|${l.type}`)
       );
 
-      // We need to insert level by level so we can get parent IDs
-      // Group by depth (parentPath length)
-      const idMap = new Map<string, string>(); // path-key -> id
-
-      // Also map existing locations by name+parent for lookups
+      const idMap = new Map<string, string>();
       const existingByKey = new Map<string, string>();
-      for (const l of existingLocs || []) {
+      for (const l of allLocs) {
         existingByKey.set(`${l.name}|${l.parent_id || "null"}|${l.type}`, l.id);
       }
+
+      // The root parent for first-level items
+      const rootParentId = parentLocationId || null;
 
       let created = 0;
       let skipped = 0;
@@ -164,20 +294,27 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
 
       for (const item of sorted) {
         // Resolve parent id
-        let parentId: string | null = null;
+        let parentId: string | null = rootParentId;
+
         if (item.parentPath.length > 0) {
           const parentKey = item.parentPath.join("|");
-          parentId = idMap.get(parentKey) || null;
-          if (!parentId) {
-            // Try existing
-            // We need the actual parent - find by walking the path
-            let currentParent: string | null = null;
+          const mappedId = idMap.get(parentKey);
+          if (mappedId) {
+            parentId = mappedId;
+          } else {
+            // Walk path from root parent
+            let currentParent: string | null = rootParentId;
             for (const segment of item.parentPath) {
-              const found = (existingLocs || []).find(
-                l => l.name === segment && l.parent_id === currentParent
-              );
-              if (found) currentParent = found.id;
-              else { currentParent = idMap.get(item.parentPath.slice(0, item.parentPath.indexOf(segment) + 1).join("|")) || null; }
+              const segKey = item.parentPath.slice(0, item.parentPath.indexOf(segment) + 1).join("|");
+              const mapped = idMap.get(segKey);
+              if (mapped) {
+                currentParent = mapped;
+              } else {
+                const found = allLocs.find(
+                  l => l.name === segment && l.parent_id === currentParent
+                );
+                if (found) currentParent = found.id;
+              }
             }
             parentId = currentParent;
           }
@@ -185,7 +322,6 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
 
         const dupeKey = `${item.name}|${parentId || "null"}|${item.type}`;
         if (existingSet.has(dupeKey)) {
-          // Already exists, just record its id for children
           const existingId = existingByKey.get(dupeKey);
           if (existingId) {
             const pathKey = [...item.parentPath, item.name].join("|");
@@ -195,23 +331,19 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
           continue;
         }
 
-        const insertData: any = {
-          name: item.name,
-          type: item.type,
-          obra_id: obraId,
-          parent_id: parentId,
-        };
-        
-        console.log(`Inserindo local: ${item.name} (${item.type}), parent: ${parentId}`);
-        
         const { data: inserted, error } = await supabase
           .from("locations")
-          .insert(insertData)
+          .insert({
+            name: item.name,
+            type: item.type as any,
+            obra_id: obraId,
+            parent_id: parentId,
+          } as any)
           .select("id")
           .single();
 
         if (error) {
-          console.error("Erro ao inserir local:", error, insertData);
+          console.error("Erro ao inserir local:", error);
           throw new Error(`Erro ao criar "${item.name}": ${error.message}`);
         }
 
@@ -233,54 +365,8 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
     }
   };
 
-  const LevelRow = ({
-    label,
-    config,
-    onChange,
-    placeholderItems,
-  }: {
-    label: string;
-    config: LevelConfig;
-    onChange: (c: LevelConfig) => void;
-    placeholderItems: string;
-  }) => (
-    <div className={`rounded-lg border p-3 space-y-2 transition-opacity ${config.enabled ? "border-primary/30 bg-primary/5" : "border-border opacity-60"}`}>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          checked={config.enabled}
-          onCheckedChange={(v) => onChange({ ...config, enabled: !!v })}
-        />
-        <Label className="font-medium text-sm">{label}</Label>
-      </div>
-      {config.enabled && (
-        <div className="grid grid-cols-2 gap-2 pl-6">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Prefixo</Label>
-            <Input
-              value={config.prefix}
-              onChange={e => onChange({ ...config, prefix: e.target.value })}
-              placeholder="Ex: Torre "
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Itens</Label>
-            <Input
-              value={config.items}
-              onChange={e => onChange({ ...config, items: e.target.value })}
-              placeholder={placeholderItems}
-              className="h-8 text-sm"
-            />
-          </div>
-          <p className="col-span-2 text-xs text-muted-foreground">
-            Use intervalo (ex: 01-10) ou lista separada por vírgula (ex: A, B, C)
-          </p>
-        </div>
-      )}
-    </div>
-  );
-
   const totalItems = buildTree().length;
+  const levelLabels = ["Nível 1", "Nível 2", "Nível 3", "Nível 4"];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPreview(null); }}>
@@ -305,11 +391,33 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
               <SearchableSelect
                 options={activeObras.map(o => ({ value: o.id, label: o.name }))}
                 value={obraId}
-                onValueChange={setObraId}
+                onValueChange={(v) => { setObraId(v); setParentLocationId(""); }}
                 placeholder="Selecione a obra"
                 searchPlaceholder="Buscar obra..."
               />
             </div>
+
+            {obraId && existingLocations.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <FolderTree className="w-4 h-4" />
+                  Local pai (opcional)
+                </Label>
+                <SearchableSelect
+                  options={[
+                    { value: "__root__", label: "— Raiz (sem pai) —" },
+                    ...parentLocationOptions,
+                  ]}
+                  value={parentLocationId || "__root__"}
+                  onValueChange={(v) => setParentLocationId(v === "__root__" ? "" : v)}
+                  placeholder="Gerar na raiz"
+                  searchPlaceholder="Buscar local pai..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Selecione um local existente para gerar sub-locais dentro dele.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-foreground">Níveis hierárquicos</p>
@@ -318,10 +426,21 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
               </p>
             </div>
 
-            <LevelRow label="Torres / Blocos" config={torre} onChange={setTorre} placeholderItems="A, B, C ou 1-5" />
-            <LevelRow label="Pavimentos" config={pavimento} onChange={setPavimento} placeholderItems="01-10 ou Térreo, 1º, 2º" />
-            <LevelRow label="Unidades" config={unidade} onChange={setUnidade} placeholderItems="01-04 ou 101, 102" />
-            <LevelRow label="Ambientes" config={ambiente} onChange={setAmbiente} placeholderItems="Sala, Cozinha, Banheiro" />
+            {levels.map((level, i) => (
+              <LevelRow
+                key={i}
+                label={levelLabels[i]}
+                config={level}
+                onChange={(c) => updateLevel(i, c)}
+                placeholderItems={
+                  i === 0 ? "A, B, C ou 1-5" :
+                  i === 1 ? "01-10 ou Térreo, 1º, 2º" :
+                  i === 2 ? "01-04 ou 101, 102" :
+                  "Sala, Cozinha, Banheiro"
+                }
+                locationTypes={locationTypes}
+              />
+            ))}
 
             {totalItems > 0 && (
               <p className="text-sm text-muted-foreground text-center">
