@@ -663,6 +663,42 @@ export type Database = {
         }
         Relationships: []
       }
+      insumo_fabricantes: {
+        Row: {
+          created_at: string
+          fabricante_id: string
+          id: string
+          insumo_id: string
+        }
+        Insert: {
+          created_at?: string
+          fabricante_id: string
+          id?: string
+          insumo_id: string
+        }
+        Update: {
+          created_at?: string
+          fabricante_id?: string
+          id?: string
+          insumo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insumo_fabricantes_fabricante_id_fkey"
+            columns: ["fabricante_id"]
+            isOneToOne: false
+            referencedRelation: "fabricantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insumo_fabricantes_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insumo_units: {
         Row: {
           abbreviation: string

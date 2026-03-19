@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ObrasCRUD from "@/components/admin/ObrasCRUD";
 import InsumosCRUD from "@/components/admin/InsumosCRUD";
-
 import LocationsCRUD from "@/components/admin/LocationsCRUD";
 import UserManagement from "@/components/admin/UserManagement";
 import ServicePackagesCRUD from "@/components/admin/ServicePackagesCRUD";
@@ -19,6 +18,7 @@ import PermissionProfilesCRUD from "@/components/admin/PermissionProfilesCRUD";
 import ConfiguracoesCRUD from "@/components/admin/ConfiguracoesCRUD";
 import FvmTab from "@/components/admin/FvmTab";
 import LaudosCRUD from "@/components/admin/LaudosCRUD";
+import FabricantesCRUD from "@/components/admin/FabricantesCRUD";
 
 const AdminDashboard = () => {
   const { obras, estoque, insumos, movimentacoes, loading } = useInventory();
@@ -32,9 +32,6 @@ const AdminDashboard = () => {
       </div>
     );
   }
-
-
-
 
   const handleExport = (type: string) => {
     const data = type === "estoque"
@@ -112,6 +109,7 @@ const AdminDashboard = () => {
               {(isAdmin || hasPermission("admin.usuarios")) && <TabsTrigger value="usuarios">Usuários</TabsTrigger>}
               {(isAdmin || hasPermission("admin.perfis")) && <TabsTrigger value="perfis">Perfis</TabsTrigger>}
               {(isAdmin || hasPermission("fvm.gerenciar")) && <TabsTrigger value="fvm">FVM</TabsTrigger>}
+              {(isAdmin || hasPermission("cadastro.insumos")) && <TabsTrigger value="fabricantes">Fabricantes</TabsTrigger>}
               {(isAdmin || hasPermission("cadastro.insumos")) && <TabsTrigger value="laudos">Laudos</TabsTrigger>}
               {isAdmin && <TabsTrigger value="configuracoes">Configurações</TabsTrigger>}
             </TabsList>
@@ -129,6 +127,7 @@ const AdminDashboard = () => {
           {(isAdmin || hasPermission("admin.usuarios")) && <TabsContent value="usuarios"><UserManagement /></TabsContent>}
           {(isAdmin || hasPermission("admin.perfis")) && <TabsContent value="perfis"><PermissionProfilesCRUD /></TabsContent>}
           {(isAdmin || hasPermission("fvm.gerenciar")) && <TabsContent value="fvm"><FvmTab /></TabsContent>}
+          {(isAdmin || hasPermission("cadastro.insumos")) && <TabsContent value="fabricantes"><FabricantesCRUD /></TabsContent>}
           {(isAdmin || hasPermission("cadastro.insumos")) && <TabsContent value="laudos"><LaudosCRUD /></TabsContent>}
           {isAdmin && <TabsContent value="configuracoes"><ConfiguracoesCRUD /></TabsContent>}
         </Tabs>
