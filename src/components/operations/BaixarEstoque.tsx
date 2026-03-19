@@ -128,22 +128,22 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
       }
     }
 
-    const retroLabel = retroativo ? " [RETROATIVO]" : "";
-    const localAplicacao = (retroativo && semLocal)
-      ? "Sem histórico de local" + retroLabel
-      : formData.locationId
-        ? getLocationPath(formData.locationId) + retroLabel
-        : (formData.localAplicacao || "Não especificado") + retroLabel;
-
     const dateToUse = (retroativo && semData) ? new Date().toISOString().split("T")[0] : formData.date;
+    const retroLabel = retroativo ? " [RETROATIVO]" : "";
 
     setIsSubmitting(true);
     try {
       for (const item of validItems) {
+        const localAplicacao = (retroativo && semLocal)
+          ? "Sem histórico de local" + retroLabel
+          : item.locationId
+            ? getLocationPath(item.locationId) + retroLabel
+            : (item.localAplicacao || "Não especificado") + retroLabel;
+
         await addSaida({
           obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
           date: dateToUse, localAplicacao, responsavel: formData.responsavel,
-          locationId: (retroativo && semLocal) ? undefined : (formData.locationId || undefined),
+          locationId: (retroativo && semLocal) ? undefined : (item.locationId || undefined),
           servicePackageId: formData.servicePackageId || undefined,
           lote: item.lote || undefined,
         });
