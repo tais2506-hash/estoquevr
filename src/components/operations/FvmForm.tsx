@@ -111,6 +111,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
       insumoId,
       file,
       notaFiscal,
+      fabricanteId: fabricanteByInsumo[insumoId] || undefined,
     }));
 
     onComplete(result, observacoesGerais, laudoFiles.length > 0 ? laudoFiles : undefined);
