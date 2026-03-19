@@ -184,6 +184,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         }
       }
 
+      for (const item of validItems) {
         const qty = parseFloat(item.quantity);
         const unitVal = parseFloat(item.unitValue);
         const totalValue = qty * unitVal;
