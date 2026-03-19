@@ -410,7 +410,6 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
         {retroativo && semLocal && (
           <p className="text-xs text-muted-foreground italic">📍 Local não informado — será registrado como "Sem histórico de local".</p>
         )}
-        )}
 
         <div className="space-y-2">
           <Label>Responsável <span className="text-destructive">*</span></Label>
