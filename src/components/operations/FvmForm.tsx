@@ -155,6 +155,9 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabrican
             if (!insumo) return null;
             const tipoLaudo = (insumo as any).tipo_laudo || "nao_controlado";
             const insLaudos = laudosByInsumo[id] || [];
+            const fabId = fabricanteByInsumo[id];
+            const fabName = fabId ? allFabricantes.find(f => f.id === fabId)?.name : null;
+            const displayName = fabName ? `${insumo.name} — ${fabName}` : insumo.name;
 
             if (tipoLaudo === "nao_controlado") {
               return (
