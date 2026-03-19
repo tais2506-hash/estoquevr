@@ -353,6 +353,24 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                         )}
                       </div>
                     )}
+                    {!(retroativo && semLocal) && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Local de Aplicação</Label>
+                        {obraLocations.length > 0 ? (
+                          <CascadingLocationSelect
+                            locations={obraLocations}
+                            value={item.locationId}
+                            onValueChange={v => updateItemLine(idx, "locationId", v)}
+                          />
+                        ) : (
+                          <Input
+                            value={item.localAplicacao}
+                            onChange={e => updateItemLine(idx, "localAplicacao", e.target.value)}
+                            placeholder="Ex: Bloco A - 3º andar"
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
