@@ -23,7 +23,7 @@ interface FvmFormProps {
   fabricanteByInsumo?: Record<string, string>; // insumoId -> fabricanteId
 }
 
-const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFormProps) => {
+const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabricanteByInsumo = {} }: FvmFormProps) => {
   const [observacoesGerais, setObservacoesGerais] = useState("");
   const { insumos } = useInventory();
   const [viewingLaudo, setViewingLaudo] = useState<any>(null);
