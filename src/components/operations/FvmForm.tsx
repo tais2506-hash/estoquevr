@@ -16,13 +16,14 @@ interface FvmAnswer {
 }
 
 interface FvmFormProps {
-  onComplete: (answers: FvmAnswer[], observacoesGerais: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => void;
+  onComplete: (answers: FvmAnswer[], observacoesGerais: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string; fabricanteId?: string }[]) => void;
   onSkip: () => void;
   insumoIds?: string[];
   notaFiscal?: string;
+  fabricanteByInsumo?: Record<string, string>; // insumoId -> fabricanteId
 }
 
-const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFormProps) => {
+const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "", fabricanteByInsumo = {} }: FvmFormProps) => {
   const [observacoesGerais, setObservacoesGerais] = useState("");
   const { insumos } = useInventory();
   const [viewingLaudo, setViewingLaudo] = useState<any>(null);
@@ -41,9 +42,9 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
     },
   });
 
-  // Fetch laudos for the insumos in this entry
+  // Fetch laudos for the insumos in this entry, filtered by fabricante when available
   const { data: laudos = [] } = useQuery({
-    queryKey: ["laudos_for_fvm", insumoIds],
+    queryKey: ["laudos_for_fvm", insumoIds, fabricanteByInsumo],
     queryFn: async () => {
       if (insumoIds.length === 0) return [];
       const { data, error } = await supabase
@@ -52,9 +53,24 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
         .in("insumo_id", insumoIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      // Filter by fabricante when mapping is provided
+      return (data || []).filter((l: any) => {
+        const fabId = fabricanteByInsumo[l.insumo_id];
+        if (!fabId) return true; // no fabricante selected, show all
+        return l.fabricante_id === fabId;
+      });
     },
     enabled: insumoIds.length > 0,
+  });
+
+  // Fetch fabricantes for display
+  const { data: allFabricantes = [] } = useQuery({
+    queryKey: ["fabricantes_fvm"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fabricantes").select("id, name").is("deleted_at", null);
+      if (error) throw error;
+      return data;
+    },
   });
 
   const [answers, setAnswers] = useState<Record<string, { conforme: boolean; observacao: string }>>({});
@@ -95,6 +111,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
       insumoId,
       file,
       notaFiscal,
+      fabricanteId: fabricanteByInsumo[insumoId] || undefined,
     }));
 
     onComplete(result, observacoesGerais, laudoFiles.length > 0 ? laudoFiles : undefined);
@@ -138,11 +155,14 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
             if (!insumo) return null;
             const tipoLaudo = (insumo as any).tipo_laudo || "nao_controlado";
             const insLaudos = laudosByInsumo[id] || [];
+            const fabId = fabricanteByInsumo[id];
+            const fabName = fabId ? allFabricantes.find(f => f.id === fabId)?.name : null;
+            const displayName = fabName ? `${insumo.name} — ${fabName}` : insumo.name;
 
             if (tipoLaudo === "nao_controlado") {
               return (
                 <div key={id} className="flex items-center justify-between py-1">
-                  <span className="text-sm">{insumo.name}</span>
+                  <span className="text-sm">{displayName}</span>
                   <Badge variant="outline" className="text-xs">Sem controle de laudo</Badge>
                 </div>
               );
@@ -153,7 +173,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
               const status = latestLaudo ? getLaudoStatus(latestLaudo) : null;
               return (
                 <div key={id} className="flex items-center justify-between py-1 gap-2">
-                  <span className="text-sm flex-1">{insumo.name}</span>
+                  <span className="text-sm flex-1">{displayName}</span>
                   {latestLaudo ? (
                     <div className="flex items-center gap-1">
                       {status === "vencido" && <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1" />Vencido</Badge>}
@@ -174,7 +194,7 @@ const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFor
             if (tipoLaudo === "por_lote") {
               return (
                 <div key={id} className="flex items-center justify-between py-1 gap-2">
-                  <span className="text-sm flex-1">{insumo.name}</span>
+                  <span className="text-sm flex-1">{displayName}</span>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">Laudo por lote/NF</Badge>
                     {laudosPorLote[id] ? (

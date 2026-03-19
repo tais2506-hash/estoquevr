@@ -21,6 +21,7 @@ interface ItemLinha {
   lote: string;
   validade: string;
   ocItemId: string;
+  fabricanteId: string;
 }
 
 const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
@@ -31,7 +32,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "", fabricanteId: "" }]);
 
   // Shared fields
   const [sharedData, setSharedData] = useState({
@@ -63,6 +64,25 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     enabled: ordensCompra.length > 0,
   });
 
+  // Fetch fabricantes and insumo_fabricantes links
+  const { data: allFabricantes = [] } = useQuery({
+    queryKey: ["fabricantes_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fabricantes").select("*").is("deleted_at", null).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: insumoFabricantes = [] } = useQuery({
+    queryKey: ["insumo_fabricantes_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("insumo_fabricantes").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const insumoOptions = useMemo(() =>
     insumos.map(i => ({
       value: i.id,
@@ -73,6 +93,17 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   );
 
   const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
+
+  const getFabricanteOptions = (insumoId: string) => {
+    if (!insumoId) return [];
+    const linkedIds = insumoFabricantes.filter(lnk => lnk.insumo_id === insumoId).map(lnk => lnk.fabricante_id);
+    return allFabricantes.filter(f => linkedIds.includes(f.id)).map(f => ({ value: f.id, label: f.name }));
+  };
+
+  const insumoNeedsLaudo = (insumoId: string) => {
+    const insumo = insumos.find(i => i.id === insumoId);
+    return insumo && (insumo as any).tipo_laudo && (insumo as any).tipo_laudo !== "nao_controlado";
+  };
 
   const getInsumoOptionsFiltered = (currentInsumoId: string) =>
     insumoOptions.filter(o => !usedInsumoIds.includes(o.value) || o.value === currentInsumoId);
@@ -92,7 +123,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   };
 
   // Multi-item helpers
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "", fabricanteId: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
@@ -115,7 +146,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
     setStep("fvm");
   };
 
-  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string }[]) => {
+  const registerEntradas = async (fvmAnswers?: { questionId: string; conforme: boolean; observacao: string }[], observacoesGerais?: string, laudosPorLote?: { insumoId: string; file: File; lote?: string; notaFiscal?: string; fabricanteId?: string }[]) => {
     if (!selectedObraId || isSubmitting) return;
     const validItems = items.filter(it => it.insumoId && parseFloat(it.quantity) > 0 && parseFloat(it.unitValue) >= 0);
 
@@ -173,6 +204,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
           await supabase.from("laudos").insert({
             insumo_id: laudoFile.insumoId,
+            fabricante_id: laudoFile.fabricanteId || null,
             file_url: urlData.publicUrl,
             file_name: laudoFile.file.name,
             nota_fiscal: laudoFile.notaFiscal || sharedData.notaFiscal,
@@ -224,7 +256,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setItems([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+    setItems([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "", fabricanteId: "" }]);
     setSharedData({ notaFiscal: "", date: new Date().toISOString().split("T")[0] });
   };
 
@@ -259,6 +291,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
             onSkip={() => registerEntradas()}
             insumoIds={items.filter(it => it.insumoId).map(it => it.insumoId)}
             notaFiscal={sharedData.notaFiscal}
+            fabricanteByInsumo={Object.fromEntries(items.filter(it => it.insumoId && it.fabricanteId).map(it => [it.insumoId, it.fabricanteId]))}
           />
         </div>
         {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
@@ -319,6 +352,8 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
           {items.map((item, idx) => {
             const totalItem = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitValue) || 0);
             const ocOpts = getOcItemOptions(item.insumoId);
+            const fabOpts = getFabricanteOptions(item.insumoId);
+            const showFabricante = insumoNeedsLaudo(item.insumoId) && fabOpts.length > 0;
 
             return (
               <div key={idx} className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
@@ -328,7 +363,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
                     <SearchableSelect
                       options={getInsumoOptionsFiltered(item.insumoId)}
                       value={item.insumoId}
-                      onValueChange={v => updateItemLine(idx, "insumoId", v)}
+                      onValueChange={v => { updateItemLine(idx, "insumoId", v); updateItemLine(idx, "fabricanteId", ""); }}
                       placeholder="Selecione o insumo"
                       searchPlaceholder="Buscar por nome ou código..."
                       emptyMessage="Nenhum insumo encontrado."
@@ -379,6 +414,20 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
                       placeholder="Selecione a OC (opcional)"
                       searchPlaceholder="Buscar OC..."
                       emptyMessage="Nenhuma OC com saldo."
+                    />
+                  </div>
+                )}
+
+                {showFabricante && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Fabricante <span className="text-destructive">*</span></Label>
+                    <SearchableSelect
+                      options={fabOpts}
+                      value={item.fabricanteId}
+                      onValueChange={v => updateItemLine(idx, "fabricanteId", v)}
+                      placeholder="Selecione o fabricante"
+                      searchPlaceholder="Buscar fabricante..."
+                      emptyMessage="Nenhum fabricante vinculado."
                     />
                   </div>
                 )}
