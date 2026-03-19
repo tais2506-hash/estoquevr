@@ -254,8 +254,10 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         <p className="text-sm text-muted-foreground mb-4">NF: <strong>{sharedData.notaFiscal}</strong> — {items.filter(it => it.insumoId).length} item(ns)</p>
         <div className="max-w-xl">
           <FvmForm
-            onComplete={(answers, obs) => registerEntradas(answers, obs)}
+            onComplete={(answers, obs, laudos) => registerEntradas(answers, obs, laudos)}
             onSkip={() => registerEntradas()}
+            insumoIds={items.filter(it => it.insumoId).map(it => it.insumoId)}
+            notaFiscal={sharedData.notaFiscal}
           />
         </div>
         {isSubmitting && <p className="text-sm text-muted-foreground mt-3">Registrando...</p>}
