@@ -92,6 +92,7 @@ const InsumosCRUD = () => {
       controla_estoque: insumo.controla_estoque ?? true, controla_consumo: insumo.controla_consumo ?? true,
       controla_rastreabilidade: insumo.controla_rastreabilidade ?? false,
       material_nao_estocavel: insumo.material_nao_estocavel ?? false, estoque_minimo: insumo.estoque_minimo ?? 0,
+      tipo_laudo: insumo.tipo_laudo ?? "nao_controlado",
     });
     setDialogOpen(true);
   };
