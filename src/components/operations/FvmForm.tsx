@@ -25,7 +25,6 @@ interface FvmFormProps {
 const FvmForm = ({ onComplete, onSkip, insumoIds = [], notaFiscal = "" }: FvmFormProps) => {
   const [observacoesGerais, setObservacoesGerais] = useState("");
   const { insumos } = useInventory();
-  const { user } = useAuth();
   const [viewingLaudo, setViewingLaudo] = useState<any>(null);
   const [laudosPorLote, setLaudosPorLote] = useState<Record<string, File>>({});
 
