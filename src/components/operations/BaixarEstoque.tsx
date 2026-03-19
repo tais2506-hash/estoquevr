@@ -62,12 +62,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
     return Array.from(cats).sort();
   }, [estoqueObra]);
 
-  const usedInsumoIds = items.map(it => it.insumoId).filter(Boolean);
-
-  const getInsumoOptions = (currentInsumoId: string) =>
+  const getInsumoOptions = () =>
     estoqueObra
       .filter(e => !categoryFilter || e.insumo.category === categoryFilter)
-      .filter(e => !usedInsumoIds.includes(e.insumo_id) || e.insumo_id === currentInsumoId)
       .map(e => {
         const ins = insumos.find(i => i.id === e.insumo_id);
         return {
