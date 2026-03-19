@@ -28,7 +28,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
 
   // Shared fields
   const [formData, setFormData] = useState({
