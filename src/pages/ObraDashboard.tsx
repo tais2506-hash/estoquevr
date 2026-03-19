@@ -227,6 +227,18 @@ const ObraDashboard = () => {
       case "requisicao": return <RequisicaoCanteiro onBack={() => setView("menu")} />;
       case "kits": return <KitsCRUD obraId={selectedObraId!} onBack={() => setView("menu")} />;
       case "oc": return <OrdensCompra onBack={() => setView("menu")} />;
+      case "fvm": return (
+        <div className="animate-fade-in">
+          <button onClick={() => setView("menu")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="w-4 h-4" /> Voltar ao Menu</button>
+          <FvmConsulta obraId={selectedObraId!} />
+        </div>
+      );
+      case "ncs": return (
+        <div className="animate-fade-in">
+          <button onClick={() => setView("menu")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="w-4 h-4" /> Voltar ao Menu</button>
+          <NaoConformidades obraId={selectedObraId!} />
+        </div>
+      );
       default: return null;
     }
   };
