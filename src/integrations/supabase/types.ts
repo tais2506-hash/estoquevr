@@ -680,6 +680,7 @@ export type Database = {
           id: string
           material_nao_estocavel: boolean
           name: string
+          tipo_laudo: Database["public"]["Enums"]["tipo_laudo"]
           unit: string
           updated_at: string
         }
@@ -696,6 +697,7 @@ export type Database = {
           id?: string
           material_nao_estocavel?: boolean
           name: string
+          tipo_laudo?: Database["public"]["Enums"]["tipo_laudo"]
           unit: string
           updated_at?: string
         }
@@ -712,6 +714,7 @@ export type Database = {
           id?: string
           material_nao_estocavel?: boolean
           name?: string
+          tipo_laudo?: Database["public"]["Enums"]["tipo_laudo"]
           unit?: string
           updated_at?: string
         }
@@ -841,6 +844,73 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "kits_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laudos: {
+        Row: {
+          created_at: string
+          created_by: string
+          file_name: string
+          file_url: string
+          fvm_id: string | null
+          id: string
+          insumo_id: string
+          lote: string | null
+          nota_fiscal: string | null
+          obra_id: string | null
+          updated_at: string
+          validade: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          file_name: string
+          file_url: string
+          fvm_id?: string | null
+          id?: string
+          insumo_id: string
+          lote?: string | null
+          nota_fiscal?: string | null
+          obra_id?: string | null
+          updated_at?: string
+          validade?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          file_name?: string
+          file_url?: string
+          fvm_id?: string | null
+          id?: string
+          insumo_id?: string
+          lote?: string | null
+          nota_fiscal?: string | null
+          obra_id?: string | null
+          updated_at?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laudos_fvm_id_fkey"
+            columns: ["fvm_id"]
+            isOneToOne: false
+            referencedRelation: "fvms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laudos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laudos_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"
@@ -1582,6 +1652,7 @@ export type Database = {
         | "ajuste_inventario"
         | "exclusao_global"
       obra_status: "ativa" | "concluida" | "pausada" | "arquivada"
+      tipo_laudo: "global" | "por_lote" | "nao_controlado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1722,6 +1793,7 @@ export const Constants = {
         "exclusao_global",
       ],
       obra_status: ["ativa", "concluida", "pausada", "arquivada"],
+      tipo_laudo: ["global", "por_lote", "nao_controlado"],
     },
   },
 } as const
