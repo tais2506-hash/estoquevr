@@ -34,10 +34,21 @@ const LaudosCRUD = () => {
     file: null as File | null,
   });
 
-  const { data: fabricantes = [] } = useQuery({
+  // All fabricantes for display
+  const { data: allFabricantes = [] } = useQuery({
     queryKey: ["fabricantes"],
     queryFn: async () => {
       const { data, error } = await supabase.from("fabricantes").select("id, name").is("deleted_at", null).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Links insumo <-> fabricante
+  const { data: insumoFabricantes = [] } = useQuery({
+    queryKey: ["insumo_fabricantes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("insumo_fabricantes").select("*");
       if (error) throw error;
       return data;
     },
@@ -67,6 +78,17 @@ const LaudosCRUD = () => {
     [insumos]
   );
 
+  // Fabricantes filtered by selected insumo
+  const fabricanteOptions = useMemo(() => {
+    if (!form.insumoId) return [];
+    const linkedIds = insumoFabricantes
+      .filter((lnk: any) => lnk.insumo_id === form.insumoId)
+      .map((lnk: any) => lnk.fabricante_id);
+    return allFabricantes
+      .filter(f => linkedIds.includes(f.id))
+      .map(f => ({ value: f.id, label: f.name }));
+  }, [form.insumoId, insumoFabricantes, allFabricantes]);
+
   const getLaudoStatus = (laudo: any) => {
     if (!laudo.validade) return "sem_validade";
     const today = new Date();
@@ -77,14 +99,9 @@ const LaudosCRUD = () => {
     return "valido";
   };
 
-  const fabricanteOptions = useMemo(() =>
-    fabricantes.map(f => ({ value: f.id, label: f.name })),
-    [fabricantes]
-  );
-
   const filtered = laudos.filter((l: any) => {
     const insumo = insumos.find(i => i.id === l.insumo_id);
-    const fabricante = fabricantes.find(f => f.id === l.fabricante_id);
+    const fabricante = allFabricantes.find(f => f.id === l.fabricante_id);
     const matchSearch = !search || 
       insumo?.name.toLowerCase().includes(search.toLowerCase()) ||
       fabricante?.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -96,6 +113,10 @@ const LaudosCRUD = () => {
     const matchStatus = filterStatus === "all" || filterStatus === status;
     return matchSearch && matchInsumo && matchStatus;
   });
+
+  const handleInsumoChange = (v: string) => {
+    setForm({ ...form, insumoId: v, fabricanteId: "" });
+  };
 
   const handleUpload = async () => {
     if (!form.insumoId || !form.fabricanteId || !form.file) {
@@ -181,7 +202,7 @@ const LaudosCRUD = () => {
                 <SearchableSelect
                   options={insumoFormOptions}
                   value={form.insumoId}
-                  onValueChange={v => setForm({ ...form, insumoId: v })}
+                  onValueChange={handleInsumoChange}
                   placeholder="Selecione o insumo"
                   searchPlaceholder="Buscar por nome ou código..."
                 />
@@ -192,9 +213,13 @@ const LaudosCRUD = () => {
                   options={fabricanteOptions}
                   value={form.fabricanteId}
                   onValueChange={v => setForm({ ...form, fabricanteId: v })}
-                  placeholder="Selecione o fabricante"
+                  placeholder={!form.insumoId ? "Selecione um insumo primeiro" : fabricanteOptions.length === 0 ? "Nenhum fabricante vinculado" : "Selecione o fabricante"}
                   searchPlaceholder="Buscar fabricante..."
+                  disabled={!form.insumoId || fabricanteOptions.length === 0}
                 />
+                {form.insumoId && fabricanteOptions.length === 0 && (
+                  <p className="text-xs text-amber-600">Nenhum fabricante vinculado a este insumo. Vincule na aba Fabricantes.</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Validade do laudo <span className="text-xs text-muted-foreground">(opcional)</span></Label>
@@ -275,7 +300,7 @@ const LaudosCRUD = () => {
             <tbody>
               {filtered.map((l: any) => {
                 const insumo = insumos.find(i => i.id === l.insumo_id);
-                const fabricante = fabricantes.find(f => f.id === l.fabricante_id);
+                const fabricante = allFabricantes.find(f => f.id === l.fabricante_id);
                 return (
                   <tr key={l.id} className="border-b border-border/50 last:border-0">
                     <td className="p-3 font-medium text-foreground">{insumo?.name || "—"}</td>
