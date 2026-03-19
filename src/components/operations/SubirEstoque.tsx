@@ -163,7 +163,27 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
         }
       }
 
-      for (const item of validItems) {
+      // Upload per-lote laudos if any
+      if (laudosPorLote && laudosPorLote.length > 0) {
+        for (const laudoFile of laudosPorLote) {
+          const ext = laudoFile.file.name.split(".").pop();
+          const path = `${laudoFile.insumoId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage.from("laudos").upload(path, laudoFile.file);
+          if (uploadErr) { console.error("Erro upload laudo:", uploadErr); continue; }
+          const { data: urlData } = supabase.storage.from("laudos").getPublicUrl(path);
+          await supabase.from("laudos").insert({
+            insumo_id: laudoFile.insumoId,
+            file_url: urlData.publicUrl,
+            file_name: laudoFile.file.name,
+            nota_fiscal: laudoFile.notaFiscal || sharedData.notaFiscal,
+            lote: laudoFile.lote || null,
+            fvm_id: fvmId || null,
+            obra_id: selectedObraId,
+            created_by: user?.id || "",
+          } as any);
+        }
+      }
+
         const qty = parseFloat(item.quantity);
         const unitVal = parseFloat(item.unitValue);
         const totalValue = qty * unitVal;
