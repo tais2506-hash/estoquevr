@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart, Pencil } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeftRight, ClipboardList, Building2, LogOut, ArrowLeft, Package, FileText, History, Undo2, Search, Globe, Trash2, Loader2, HandCoins, ShoppingCart, Pencil, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
