@@ -28,8 +28,9 @@ import KitsCRUD from "@/components/admin/KitsCRUD";
 import OrdensCompra from "@/components/operations/OrdensCompra";
 import FvmConsulta from "@/components/admin/FvmConsulta";
 import NaoConformidades from "@/components/admin/NaoConformidades";
+import LaudosObra from "@/components/operations/LaudosObra";
 
-type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc" | "fvm" | "ncs";
+type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc" | "fvm" | "ncs" | "laudos";
 
 const operations = [
   { key: "subir" as const, label: "Subir Estoque", icon: ArrowUp, description: "Entrada de materiais", color: "text-success", permission: "estoque.entrada.criar" },
@@ -42,6 +43,7 @@ const operations = [
   { key: "ncs" as const, label: "Não Conformidades", icon: ClipboardCheck, description: "NCs desta obra", color: "text-amber-500", permission: null },
   { key: "kits" as const, label: "Kits de Insumos", icon: Package, description: "Gerenciar kits da obra", color: "text-violet-500", permission: null },
   { key: "oc" as const, label: "Ordens de Compra", icon: ShoppingCart, description: "Controlar saldo de OC", color: "text-emerald-600", permission: "oc.gerenciar" },
+  { key: "laudos" as const, label: "Laudos", icon: FileText, description: "Certificados de qualidade", color: "text-blue-600", permission: null },
 ];
 
 const MOV_TYPE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -239,6 +241,7 @@ const ObraDashboard = () => {
           <NaoConformidades obraId={selectedObraId!} />
         </div>
       );
+      case "laudos": return <LaudosObra obraId={selectedObraId!} onBack={() => setView("menu")} />;
       default: return null;
     }
   };
