@@ -255,7 +255,7 @@ const SubirEstoque = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setItems([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "" }]);
+    setItems([{ insumoId: "", quantity: "", unitValue: "", lote: "", validade: "", ocItemId: "", fabricanteId: "" }]);
     setSharedData({ notaFiscal: "", date: new Date().toISOString().split("T")[0] });
   };
 
