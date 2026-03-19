@@ -45,6 +45,7 @@ interface ItemLinha {
   insumoId: string;
   quantity: string;
   locationId: string;
+  locationIds: string[];
   localAplicacao: string;
 }
 

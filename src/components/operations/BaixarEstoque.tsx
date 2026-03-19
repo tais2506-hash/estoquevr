@@ -14,6 +14,7 @@ interface ItemLinha {
   quantity: string;
   lote: string;
   locationId: string;
+  locationIds: string[];
   localAplicacao: string;
 }
 
