@@ -195,18 +195,25 @@ const BulkLocationGenerator = ({ obras }: BulkLocationGeneratorProps) => {
           continue;
         }
 
+        const insertData: any = {
+          name: item.name,
+          type: item.type,
+          obra_id: obraId,
+          parent_id: parentId,
+        };
+        
+        console.log(`Inserindo local: ${item.name} (${item.type}), parent: ${parentId}`);
+        
         const { data: inserted, error } = await supabase
           .from("locations")
-          .insert({
-            name: item.name,
-            type: item.type as any,
-            obra_id: obraId,
-            parent_id: parentId,
-          } as any)
+          .insert(insertData)
           .select("id")
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao inserir local:", error, insertData);
+          throw new Error(`Erro ao criar "${item.name}": ${error.message}`);
+        }
 
         const pathKey = [...item.parentPath, item.name].join("|");
         idMap.set(pathKey, inserted.id);
