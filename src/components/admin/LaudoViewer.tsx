@@ -13,14 +13,14 @@ interface LaudoViewerProps {
 const LaudoViewer = ({ laudo, onBack }: LaudoViewerProps) => {
   const { insumos } = useInventory();
   const insumo = insumos.find(i => i.id === laudo.insumo_id);
-  const { data: fornecedor } = useQuery({
-    queryKey: ["fornecedor_laudo", laudo.fornecedor_id],
+  const { data: fabricante } = useQuery({
+    queryKey: ["fabricante_laudo", laudo.fabricante_id],
     queryFn: async () => {
-      if (!laudo.fornecedor_id) return null;
-      const { data } = await supabase.from("fornecedores").select("name").eq("id", laudo.fornecedor_id).single();
+      if (!laudo.fabricante_id) return null;
+      const { data } = await supabase.from("fabricantes").select("name").eq("id", laudo.fabricante_id).single();
       return data;
     },
-    enabled: !!laudo.fornecedor_id,
+    enabled: !!laudo.fabricante_id,
   });
   const isPdf = laudo.file_url?.toLowerCase().endsWith(".pdf") || laudo.file_name?.toLowerCase().endsWith(".pdf");
   const isImage = /\.(jpg|jpeg|png|webp)$/i.test(laudo.file_url || laudo.file_name || "");

@@ -27,17 +27,17 @@ const LaudosCRUD = () => {
 
   const [form, setForm] = useState({
     insumoId: "",
-    fornecedorId: "",
+    fabricanteId: "",
     validade: "",
     lote: "",
     notaFiscal: "",
     file: null as File | null,
   });
 
-  const { data: fornecedores = [] } = useQuery({
-    queryKey: ["fornecedores_laudos"],
+  const { data: fabricantes = [] } = useQuery({
+    queryKey: ["fabricantes"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fornecedores").select("id, name, cnpj").is("deleted_at", null).order("name");
+      const { data, error } = await supabase.from("fabricantes").select("id, name").is("deleted_at", null).order("name");
       if (error) throw error;
       return data;
     },
