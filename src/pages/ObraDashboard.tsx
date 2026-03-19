@@ -26,6 +26,8 @@ import RequisicaoCanteiro from "@/components/operations/RequisicaoCanteiro";
 import EmprestimoEstoque from "@/components/operations/EmprestimoEstoque";
 import KitsCRUD from "@/components/admin/KitsCRUD";
 import OrdensCompra from "@/components/operations/OrdensCompra";
+import FvmConsulta from "@/components/admin/FvmConsulta";
+import NaoConformidades from "@/components/admin/NaoConformidades";
 
 type OperationView = "menu" | "subir" | "baixar" | "transferir" | "inventario" | "requisicao" | "emprestimo" | "kits" | "oc";
 
