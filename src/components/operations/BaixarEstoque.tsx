@@ -14,6 +14,7 @@ interface ItemLinha {
   quantity: string;
   lote: string;
   locationId: string;
+  locationIds: string[];
   localAplicacao: string;
 }
 
@@ -28,7 +29,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", lote: "", locationId: "", locationIds: [], localAplicacao: "" }]);
 
   // Shared fields
   const [formData, setFormData] = useState({
@@ -96,7 +97,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   );
 
   // Multi-item helpers
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", lote: "", locationId: "", locationIds: [], localAplicacao: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
@@ -133,22 +134,27 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
 
     setIsSubmitting(true);
     try {
+      let totalSaidas = 0;
       for (const item of validItems) {
-        const localAplicacao = (retroativo && semLocal)
-          ? "Sem histórico de local" + retroLabel
-          : item.locationId
-            ? getLocationPath(item.locationId) + retroLabel
-            : (item.localAplicacao || "Não especificado") + retroLabel;
+        const effectiveLocationIds = item.locationIds.length > 0 ? item.locationIds : (item.locationId ? [item.locationId] : [""]);
+        for (const locId of effectiveLocationIds) {
+          const localAplicacao = (retroativo && semLocal)
+            ? "Sem histórico de local" + retroLabel
+            : locId
+              ? getLocationPath(locId) + retroLabel
+              : (item.localAplicacao || "Não especificado") + retroLabel;
 
-        await addSaida({
-          obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
-          date: dateToUse, localAplicacao, responsavel: formData.responsavel,
-          locationId: (retroativo && semLocal) ? undefined : (item.locationId || undefined),
-          servicePackageId: formData.servicePackageId || undefined,
-          lote: item.lote || undefined,
-        });
+          await addSaida({
+            obraId: selectedObraId, insumoId: item.insumoId, quantity: parseFloat(item.quantity),
+            date: dateToUse, localAplicacao, responsavel: formData.responsavel,
+            locationId: (retroativo && semLocal) ? undefined : (locId || undefined),
+            servicePackageId: formData.servicePackageId || undefined,
+            lote: item.lote || undefined,
+          });
+          totalSaidas++;
+        }
       }
-      toast.success(`${validItems.length} ${validItems.length === 1 ? "saída registrada" : "saídas registradas"}!`);
+      toast.success(`${totalSaidas} ${totalSaidas === 1 ? "saída registrada" : "saídas registradas"}!`);
       setDone(true);
     } catch {
       toast.error("Erro ao registrar saída");
@@ -207,7 +213,7 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
   const resetAll = () => {
     setDone(false);
     setRetroativo(false); setSemLocal(false); setSemData(false); setCategoryFilter("");
-    setItems([{ insumoId: "", quantity: "", lote: "", locationId: "", localAplicacao: "" }]);
+    setItems([{ insumoId: "", quantity: "", lote: "", locationId: "", locationIds: [], localAplicacao: "" }]);
     setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", servicePackageId: "" });
   };
 
@@ -356,6 +362,9 @@ const BaixarEstoque = ({ onBack }: { onBack: () => void }) => {
                             locations={obraLocations}
                             value={item.locationId}
                             onValueChange={v => updateItemLine(idx, "locationId", v)}
+                            multiSelect
+                            multiValue={item.locationIds}
+                            onMultiValueChange={ids => setItems(prev => prev.map((it, i) => i === idx ? { ...it, locationIds: ids } : it))}
                           />
                         ) : (
                           <Input

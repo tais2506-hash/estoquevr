@@ -45,6 +45,7 @@ interface ItemLinha {
   insumoId: string;
   quantity: string;
   locationId: string;
+  locationIds: string[];
   localAplicacao: string;
 }
 
@@ -57,7 +58,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   const [mode, setMode] = useState<"insumo" | "kit">("insumo");
 
   // Multi-item state
-  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
+  const [items, setItems] = useState<ItemLinha[]>([{ insumoId: "", quantity: "", locationId: "", locationIds: [], localAplicacao: "" }]);
   const [formData, setFormData] = useState({
     kitId: "", quantity: "", date: new Date().toISOString().split("T")[0],
     localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "",
@@ -137,7 +138,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
     return parts.join(" > ");
   };
   // --- Multi-item helpers ---
-  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
+  const addItemLine = () => setItems(prev => [...prev, { insumoId: "", quantity: "", locationId: "", locationIds: [], localAplicacao: "" }]);
   const removeItemLine = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
   const updateItemLine = (idx: number, field: keyof ItemLinha, value: string) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
@@ -158,23 +159,27 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
       try {
         const now = new Date().toISOString();
 
-        const rows = validItems.map(it => {
-          const localAplicacao = it.locationId
-            ? getLocationPath(it.locationId)
-            : it.localAplicacao || "Não especificado";
-          return {
-            obra_id: selectedObraId,
-            insumo_id: it.insumoId,
-            quantity: parseFloat(it.quantity),
-            local_aplicacao: localAplicacao,
-            location_id: it.locationId || null,
-            responsavel: formData.responsavel,
-            solicitante_nome: formData.solicitanteNome || user.name,
-            date: formData.date,
-            user_id: user.id,
-            created_at: now,
-          };
-        });
+        const rows: any[] = [];
+        for (const it of validItems) {
+          const effectiveLocationIds = it.locationIds.length > 0 ? it.locationIds : (it.locationId ? [it.locationId] : [""]);
+          for (const locId of effectiveLocationIds) {
+            const localAplicacao = locId
+              ? getLocationPath(locId)
+              : it.localAplicacao || "Não especificado";
+            rows.push({
+              obra_id: selectedObraId,
+              insumo_id: it.insumoId,
+              quantity: parseFloat(it.quantity),
+              local_aplicacao: localAplicacao,
+              location_id: locId || null,
+              responsavel: formData.responsavel,
+              solicitante_nome: formData.solicitanteNome || user.name,
+              date: formData.date,
+              user_id: user.id,
+              created_at: now,
+            });
+          }
+        }
         const { error } = await supabase.from("requisicoes").insert(rows);
         if (error) throw error;
         toast.success(`Requisição enviada com ${validItems.length} ${validItems.length === 1 ? "item" : "itens"}!`);
@@ -228,7 +233,7 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
   };
 
   const resetForm = () => {
-    setItems([{ insumoId: "", quantity: "", locationId: "", localAplicacao: "" }]);
+    setItems([{ insumoId: "", quantity: "", locationId: "", locationIds: [], localAplicacao: "" }]);
     setFormData({ kitId: "", quantity: "", date: new Date().toISOString().split("T")[0], localAplicacao: "", responsavel: "", locationId: "", solicitanteNome: "", servicePackageId: "" });
   };
 
@@ -376,6 +381,9 @@ const RequisicaoCanteiro = ({ onBack }: { onBack: () => void }) => {
                         locations={obraLocations}
                         value={item.locationId}
                         onValueChange={v => updateItemLine(idx, "locationId", v)}
+                        multiSelect
+                        multiValue={item.locationIds}
+                        onMultiValueChange={ids => setItems(prev => prev.map((it, i) => i === idx ? { ...it, locationIds: ids } : it))}
                       />
                     ) : (
                       <Input
