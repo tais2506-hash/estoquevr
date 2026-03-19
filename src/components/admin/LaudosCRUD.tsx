@@ -187,6 +187,16 @@ const LaudosCRUD = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Fornecedor <span className="text-destructive">*</span></Label>
+                <SearchableSelect
+                  options={fornecedorOptions}
+                  value={form.fornecedorId}
+                  onValueChange={v => setForm({ ...form, fornecedorId: v })}
+                  placeholder="Selecione o fornecedor"
+                  searchPlaceholder="Buscar fornecedor..."
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Validade do laudo <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                 <Input type="date" value={form.validade} onChange={e => setForm({ ...form, validade: e.target.value })} />
               </div>
